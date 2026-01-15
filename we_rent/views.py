@@ -14,63 +14,76 @@ def home(request):
 
 @api_view(['POST'])
 def signup(request):
-    data = request.data
-    email = data.get("email")
-    password = data.get("password")
-    full_name = data.get("fullName")
-    role = data.get("role")
+    try:
+        data = request.data
+        email = data.get("email")
+        password = data.get("password")
+        full_name = data.get("fullName")
+        role = data.get("role")
 
-    if not email or not password or not full_name or not role:
-        return Response({"error": "All fields are required"}, status=400)
+        if not email or not password or not full_name or not role:
+            return Response({"error": "All fields are required"}, status=400)
 
-    if users_collection.find_one({"email": email}):
-        return Response({"error": "User already exists"}, status=400)
+        # Check if user already exists
+        if users_collection.find_one({"email": email}):
+            return Response({"error": "User already exists"}, status=400)
 
-    # Hash the password
-    hashed_password = make_password(password)
+        # Hash the password
+        hashed_password = make_password(password)
 
-    user = {
-        "fullName": full_name,
-        "email": email,
-        "password": hashed_password,
-        "role": role,
-    }
+        user = {
+            "fullName": full_name,
+            "email": email,
+            "password": hashed_password,
+            "role": role,
+        }
 
-    # Insert user into MongoDB
-    result = users_collection.insert_one(user)
+        # Insert user into MongoDB
+        result = users_collection.insert_one(user)
 
-    # Return success with user data
-    return Response({
-        "message": "User registered successfully",
-        "fullName": full_name,
-        "email": email,
-        "role": role,
-        "_id": str(result.inserted_id)  # Use _id for consistency with MongoDB
-    }, status=201)
+        # Return success with user data
+        return Response({
+            "message": "User registered successfully",
+            "fullName": full_name,
+            "email": email,
+            "role": role,
+            "_id": str(result.inserted_id)
+        }, status=201)
+
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Signup error: {str(e)}")
+        return Response({"error": f"Server error: {str(e)}"}, status=500)
 
 
 @api_view(['POST'])
 def login_user(request):
-    data = request.data
-    email = data.get("email")
-    password = data.get("password")
+    try:
+        data = request.data
+        email = data.get("email")
+        password = data.get("password")
 
-    if not email or not password:
-        return Response({"error": "Email and password are required"}, status=400)
+        if not email or not password:
+            return Response({"error": "Email and password are required"}, status=400)
 
-    user = users_collection.find_one({"email": email})
-    if not user:
-        return Response({"error": "User not found"}, status=404)
+        user = users_collection.find_one({"email": email})
+        if not user:
+            return Response({"error": "User not found"}, status=404)
 
-    # check hashed password
-    from django.contrib.auth.hashers import check_password
-    if not check_password(password, user['password']):
-        return Response({"message": "Invalid credentials"}, status=401)
+        # check hashed password
+        from django.contrib.auth.hashers import check_password
+        if not check_password(password, user['password']):
+            return Response({"message": "Invalid credentials"}, status=401)
 
-    # Return user data to Flutter
-    return Response({
-        "fullName": user['fullName'],
-        "email": user['email'],
-        "role": user['role'],
-        "id": str(user['_id'])
-    })
+        # Return user data to Flutter
+        return Response({
+            "fullName": user['fullName'],
+            "email": user['email'],
+            "role": user['role'],
+            "_id": str(user['_id'])
+        })
+
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Login error: {str(e)}")
+        return Response({"error": f"Server error: {str(e)}"}, status=500)
