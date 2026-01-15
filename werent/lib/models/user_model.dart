@@ -1,3 +1,5 @@
+
+
 enum UserRole {
   renter,
   owner,
@@ -20,23 +22,12 @@ class User {
     this.ownedCarIds,
   });
 
-  static List<User> dummyUsers = [
-    User(
-    id: '1', 
-    fullName: 'Oli', 
-    email: 'oli@gmail.com', 
-    role: UserRole.renter
-    ),
-
-    User(
-    id: '1', 
-    fullName: 'Shyam', 
-    email: 'Shyam@gmail.com', 
-    role: UserRole.owner ,
-    ownedCarIds: ['1', '2']
-    ),
-  ];
-    
-
-
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['_id'] ?? '',  // MongoDB _id
+      fullName: json['fullName'],
+      email: json['email'],
+      role: json['role'] == 'owner' ? UserRole.owner : UserRole.renter,
+    );
+  }
 }

@@ -1,7 +1,8 @@
 from django.urls import path
-from we_rent import views
+from . import views
 
-
+# we_rent/urls.py
 urlpatterns = [
-    path('customer/', views.customerList.as_view()),
+    path('signup/', views.signup, name='signup'),
+    path('login/', views.login_user, name='login'),  # Fixed: was 'views.login'
 ]

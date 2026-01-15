@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/widgets/custom_field.dart';
-
-
+import 'package:werent/controllers/auth_controller.dart';
+import 'package:werent/auth/renter_dashboard.dart';
+import 'package:werent/auth/owner_dashboard.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,20 +14,20 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _authController = AuthController();
 
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
   UserRole _selectedRole = UserRole.renter;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Create Account"),
-      ),
+      appBar: AppBar(title: const Text("Create Account")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(22),
         child: Form(
@@ -43,12 +44,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: _buildRoleTab(UserRole.renter, 'Renter'),
-                    ),
-                    Expanded(
-                      child: _buildRoleTab(UserRole.owner, 'Owner'),
-                    ),
+                    Expanded(child: _buildRoleTab(UserRole.renter, 'Renter')),
+                    Expanded(child: _buildRoleTab(UserRole.owner, 'Owner')),
                   ],
                 ),
               ),
@@ -61,10 +58,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 16),
 
-              CustomTextField(
-                controller: _emailController,
-                hintText: 'Email',
-              ),
+              CustomTextField(controller: _emailController, hintText: 'Email'),
               const SizedBox(height: 16),
 
               CustomTextField(
@@ -73,9 +67,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 obscureText: _obscurePassword,
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscurePassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
                   ),
                   onPressed: () {
                     setState(() {
@@ -91,11 +83,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _signUpUser,
-                  child: const Text(
-                    "Sign Up",
-                    style: TextStyle(fontSize: 18),
+                  onPressed: _isLoading ? null : _signUpUser,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Sign Up",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -133,14 +136,46 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  void _signUpUser() {
+  void _signUpUser() async {
     if (_formKey.currentState!.validate()) {
-      // Call your AuthController signup method here
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created successfully")),
-      );
+      setState(() => _isLoading = true);
 
-      Navigator.pop(context); // Go back to Login screen
+      try {
+        final user = await _authController.signup(
+          fullName: _fullNameController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+          role: _selectedRole,
+        );
+
+        if (user != null) {
+          // Navigate to the correct dashboard based on user role
+          Widget dashboard;
+          if (user.role == UserRole.owner) {
+            dashboard = OwnerDashboardPage(
+              user: user,
+              authController: _authController,
+            );
+          } else {
+            dashboard = RenterDashboardPage(
+              user: user,
+              authController: _authController,
+            );
+          }
+
+          // Clear navigation stack and go to dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => dashboard),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      } finally {
+        setState(() => _isLoading = false);
+      }
     }
   }
 }

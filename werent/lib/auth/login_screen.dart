@@ -3,7 +3,8 @@ import 'package:werent/controllers/auth_controller.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/widgets/custom_field.dart';
 import 'package:werent/auth/signup_screen.dart';
-
+import 'package:werent/auth/renter_dashboard.dart';
+import 'package:werent/auth/owner_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -65,10 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                         const Text(
                           'Login to continue',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.black54,
-                          ),
+                          style: TextStyle(fontSize: 18, color: Colors.black54),
                         ),
                         const SizedBox(height: 30.3),
 
@@ -121,9 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 32),
 
                         // Login Button
-                        
-
-                        SizedBox( 
+                        SizedBox(
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
@@ -141,9 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const Text(
                                     'Login',
                                     style: TextStyle(
-                                        color: Color.fromARGB(255, 0, 0, 0),
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold),
+                                      color: Color.fromARGB(255, 0, 0, 0),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                           ),
                         ),
@@ -152,35 +149,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         const SizedBox(height: 16),
 
-Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    const Text(
-      "Don't have an account?",
-      style: TextStyle(color: Colors.black54),
-    ),
-    TextButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const SignUpScreen(),
-          ),
-        );
-      },
-      child: const Text(
-        "Sign Up",
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.blue,
-        ),
-      ),
-    ),
-  ],
-),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Don't have an account?",
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const SignUpScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                "Sign Up",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
 
-const SizedBox(height: 30),
-
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -192,8 +188,6 @@ const SizedBox(height: 30),
       ),
     );
   }
-
-  
 
   // Role Tab Widget
   Widget _buildRoleTab(UserRole role, String label) {
@@ -227,68 +221,80 @@ const SizedBox(height: 30),
   // Login function
   void _loginUser() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
-        final user = await _authController.loginwithRole(
-          _emailController.text,
-          _passwordController.text,
-          _selectedRole,
+        final user = await _authController.login(
+          email: _emailController.text,
+          password: _passwordController.text,
+          expectedRole: _selectedRole,
         );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logged in as ${user?.fullName}')),
-        );
+        if (user != null) {
+          // Navigate to the correct dashboard based on user role
+          Widget dashboard;
+          if (user.role == UserRole.owner) {
+            dashboard = OwnerDashboardPage(
+              user: user,
+              authController: _authController,
+            );
+          } else {
+            dashboard = RenterDashboardPage(
+              user: user,
+              authController: _authController,
+            );
+          }
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => dashboard),
+          );
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 }
+// // CustomTextField Widget
+// class CustomTextField extends StatelessWidget {
+//   final TextEditingController controller;
+//   final String hintText;
+//   final bool obscureText;
+//   final Widget? suffixIcon;
 
-// CustomTextField Widget
-class CustomTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hintText;
-  final bool obscureText;
-  final Widget? suffixIcon;
+//   const CustomTextField({
+//     super.key,
+//     required this.controller,
+//     required this.hintText,
+//     this.obscureText = false,
+//     this.suffixIcon,
+//   });
 
-  const CustomTextField({
-    super.key,
-    required this.controller,
-    required this.hintText,
-    this.obscureText = false,
-    this.suffixIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        hintText: hintText,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        suffixIcon: suffixIcon,
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter $hintText';
-        }
-        return null;
-      },
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return TextFormField(
+//       controller: controller,
+//       obscureText: obscureText,
+//       decoration: InputDecoration(
+//         hintText: hintText,
+//         contentPadding:
+//             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+//         border: OutlineInputBorder(
+//           borderRadius: BorderRadius.circular(12),
+//         ),
+//         suffixIcon: suffixIcon,
+//       ),
+//       validator: (value) {
+//         if (value == null || value.isEmpty) {
+//           return 'Please enter $hintText';
+//         }
+//         return null;
+//       },
+//     );
+//   }
+// }
