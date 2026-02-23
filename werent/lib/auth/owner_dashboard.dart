@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
@@ -54,7 +53,6 @@ class OwnerDashboardPage extends StatelessWidget {
 
               if (confirmLogout == true) {
                 await authController.logout();
-                // Navigate back to login screen
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -289,7 +287,6 @@ class OwnerDashboardPage extends StatelessWidget {
             ),
           ),
         ),
-        // Only 4 items: Add Car, My Cars, Bookings, Earnings
         _buildActionCard(
           icon: Icons.add_circle,
           title: 'Add New Car',
@@ -433,6 +430,3 @@ class OwnerDashboardPage extends StatelessWidget {
     );
   }
 }
-
-
-

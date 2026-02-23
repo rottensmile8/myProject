@@ -54,11 +54,7 @@ class RenterDashboardPage extends StatelessWidget {
 
               if (confirmLogout == true) {
                 await authController.logout();
-                // Navigate back to login screen
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
+
               }
             },
           ),
