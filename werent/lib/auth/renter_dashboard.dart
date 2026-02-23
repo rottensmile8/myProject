@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
@@ -54,7 +53,10 @@ class RenterDashboardPage extends StatelessWidget {
 
               if (confirmLogout == true) {
                 await authController.logout();
-
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
               }
             },
           ),
@@ -75,22 +77,12 @@ class RenterDashboardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Welcome Message
                 _buildWelcomeSection(),
-
                 const SizedBox(height: 20),
-
-                // Analytics Section
                 _buildAnalyticsSection(),
-
                 const SizedBox(height: 24),
-
-                // Quick Actions with Logos
                 _buildQuickActionsSection(),
-
                 const SizedBox(height: 24),
-
-                // Additional Menu Items
                 _buildAdditionalMenuSection(),
               ],
             ),
@@ -301,9 +293,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Find your perfect car',
           color: Colors.orange.shade400,
           logo: Icons.directions_car,
-          onTap: () {
-            // Navigate to browse cars page
-          },
+          onTap: () {},
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -312,9 +302,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'View past rentals',
           color: Colors.purple.shade400,
           logo: Icons.history,
-          onTap: () {
-            // Navigate to rental history
-          },
+          onTap: () {},
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -323,9 +311,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Your favorite cars',
           color: Colors.red.shade400,
           logo: Icons.favorite,
-          onTap: () {
-            // Navigate to saved cars
-          },
+          onTap: () {},
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -334,9 +320,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Get help & assistance',
           color: Colors.teal.shade400,
           logo: Icons.support_agent,
-          onTap: () {
-            // Navigate to support
-          },
+          onTap: () {},
         ),
       ],
     );
@@ -453,4 +437,3 @@ class RenterDashboardPage extends StatelessWidget {
     );
   }
 }
-

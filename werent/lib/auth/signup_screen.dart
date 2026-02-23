@@ -149,24 +149,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
 
         if (user != null) {
-          // Navigate to the correct dashboard based on user role
-          Widget dashboard;
-          if (user.role == UserRole.owner) {
-            dashboard = OwnerDashboardPage(
-              user: user,
-              authController: _authController,
-            );
-          } else {
-            dashboard = RenterDashboardPage(
-              user: user,
-              authController: _authController,
-            );
-          }
+          // Set the user in auth controller before navigating
+          _authController.setUser(user);
 
           // Clear navigation stack and go to dashboard
-          Navigator.pushReplacement(
+          Navigator.pushReplacementNamed(
             context,
-            MaterialPageRoute(builder: (_) => dashboard),
+            user.role == UserRole.owner
+                ? '/owner/dashboard'
+                : '/renter/dashboard',
+            arguments: user,
           );
         }
       } catch (e) {

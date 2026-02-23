@@ -231,23 +231,15 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (user != null) {
-          // Navigate to the correct dashboard based on user role
-          Widget dashboard;
-          if (user.role == UserRole.owner) {
-            dashboard = OwnerDashboardPage(
-              user: user,
-              authController: _authController,
-            );
-          } else {
-            dashboard = RenterDashboardPage(
-              user: user,
-              authController: _authController,
-            );
-          }
-
-          Navigator.pushReplacement(
+          // Set the user in auth controller before navigating
+          _authController.setUser(user);
+          // Navigate to the correct dashboard based on user role using named routes
+          Navigator.pushReplacementNamed(
             context,
-            MaterialPageRoute(builder: (_) => dashboard),
+            user.role == UserRole.owner
+                ? '/owner/dashboard'
+                : '/renter/dashboard',
+            arguments: user,
           );
         }
       } catch (e) {

@@ -41,8 +41,13 @@ class AuthController extends ChangeNotifier {
         return _currentUser;
       } else {
         final errorData = jsonDecode(response.body);
-        throw Exception(errorData['error'] ?? 'Signup failed');
+        final errorMessage =
+            errorData['error'] ?? errorData['message'] ?? 'Signup failed';
+        throw Exception(_getUserFriendlyErrorMessage(errorMessage, 'signup'));
       }
+    } on Exception catch (e) {
+      // Re-throw with user-friendly message
+      throw Exception(_getUserFriendlyErrorMessage(e.toString(), 'signup'));
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -70,7 +75,7 @@ class AuthController extends ChangeNotifier {
 
         if (data['role'] != expectedRole.name) {
           throw Exception(
-            'Role mismatch: Expected ${expectedRole.name} but got ${data['role']}',
+            'Role mismatch: You are trying to login as ${expectedRole.name} but your account is registered as ${data["role"]}. Please select the correct role.',
           );
         }
 
@@ -78,14 +83,75 @@ class AuthController extends ChangeNotifier {
         return _currentUser;
       } else {
         final errorData = jsonDecode(response.body);
-        throw Exception(
-          errorData['message'] ?? errorData['error'] ?? 'Login failed',
-        );
+        final errorMessage =
+            errorData['error'] ?? errorData['message'] ?? 'Login failed';
+        throw Exception(_getUserFriendlyErrorMessage(errorMessage, 'login'));
       }
+    } on Exception catch (e) {
+      // Re-throw with user-friendly message
+      throw Exception(_getUserFriendlyErrorMessage(e.toString(), 'login'));
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Convert technical errors to user-friendly messages
+  String _getUserFriendlyErrorMessage(String error, String context) {
+    final lowerError = error.toLowerCase();
+
+    // Network/Socket errors
+    if (lowerError.contains('socketexception') ||
+        lowerError.contains('connection refused') ||
+        lowerError.contains('network is unreachable') ||
+        lowerError.contains('failed host identification')) {
+      return 'Cannot connect to server. Please ensure:\n'
+          '1. MongoDB is running (check MongoDB Compass)\n'
+          '2. Django server is running (python manage.py runserver)\n'
+          '3. You have an active internet connection';
+    }
+
+    // User already exists
+    if (lowerError.contains('user already exists') ||
+        lowerError.contains('duplicate key')) {
+      return 'An account with this email already exists. Please login or use a different email.';
+    }
+
+    // User not found
+    if (lowerError.contains('user not found') ||
+        lowerError.contains('no such document')) {
+      return 'No account found with this email. Please signup first.';
+    }
+
+    // Invalid credentials
+    if (lowerError.contains('invalid credentials') ||
+        lowerError.contains('wrong password') ||
+        lowerError.contains('password mismatch')) {
+      return 'Incorrect password. Please try again.';
+    }
+
+    // Password validation
+    if (lowerError.contains('password') && lowerError.contains('required')) {
+      return 'Password is required.';
+    }
+
+    // Email validation
+    if (lowerError.contains('email') && lowerError.contains('required')) {
+      return 'Email is required.';
+    }
+
+    // All fields required
+    if (lowerError.contains('all fields are required')) {
+      return 'Please fill in all required fields.';
+    }
+
+    // Role mismatch
+    if (lowerError.contains('role mismatch')) {
+      return error; // Keep the detailed role mismatch message
+    }
+
+    // Default - return original error
+    return error;
   }
 
   // Logout method
@@ -122,6 +188,12 @@ class AuthController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Helper method to set user directly
+  void setUser(User user) {
+    _currentUser = user;
+    notifyListeners();
   }
 
   // Helper method to determine initial route
