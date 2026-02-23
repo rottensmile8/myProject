@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
-import 'package:werent/auth/login_screen.dart';
 
 class RenterDashboardPage extends StatelessWidget {
   final User user;
@@ -53,10 +52,9 @@ class RenterDashboardPage extends StatelessWidget {
 
               if (confirmLogout == true) {
                 await authController.logout();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
+                if (context.mounted) {
+                  Navigator.pushReplacementNamed(context, '/auth');
+                }
               }
             },
           ),

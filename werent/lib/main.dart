@@ -3,6 +3,9 @@ import 'package:werent/auth/login_screen.dart';
 import 'package:werent/auth/signup_screen.dart';
 import 'package:werent/auth/renter_dashboard.dart';
 import 'package:werent/auth/owner_dashboard.dart';
+import 'package:werent/auth/add_vehicle.dart';
+import 'package:werent/auth/my_vehicles.dart';
+import 'package:werent/auth/bookings.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
 
@@ -48,6 +51,27 @@ class MyApp extends StatelessWidget {
               user: user,
               authController: authController,
             );
+          }
+          return const LoginScreen();
+        },
+        '/owner/add-vehicle': (context) {
+          final user = ModalRoute.of(context)!.settings.arguments as User?;
+          if (user != null) {
+            return AddVehicleScreen(user: user);
+          }
+          return const LoginScreen();
+        },
+        '/owner/my-vehicles': (context) {
+          final user = ModalRoute.of(context)!.settings.arguments as User?;
+          if (user != null) {
+            return MyVehiclesScreen(user: user);
+          }
+          return const LoginScreen();
+        },
+        '/owner/bookings': (context) {
+          final user = ModalRoute.of(context)!.settings.arguments as User?;
+          if (user != null) {
+            return BookingsScreen(user: user);
           }
           return const LoginScreen();
         },

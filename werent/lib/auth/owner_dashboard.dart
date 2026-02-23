@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
-import 'package:werent/auth/login_screen.dart';
 
 class OwnerDashboardPage extends StatelessWidget {
   final User user;
@@ -53,10 +52,9 @@ class OwnerDashboardPage extends StatelessWidget {
 
               if (confirmLogout == true) {
                 await authController.logout();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
+                if (context.mounted) {
+                  Navigator.pushReplacementNamed(context, '/auth');
+                }
               }
             },
           ),
@@ -78,12 +76,8 @@ class OwnerDashboardPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildWelcomeSection(),
-                const SizedBox(height: 20),
-                _buildAnalyticsSection(),
                 const SizedBox(height: 24),
-                _buildQuickActionsSection(),
-                const SizedBox(height: 24),
-                _buildAdditionalMenuSection(),
+                _buildQuickActionsSection(context),
               ],
             ),
           ),
@@ -272,7 +266,7 @@ class OwnerDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionsSection() {
+  Widget _buildQuickActionsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -287,40 +281,67 @@ class OwnerDashboardPage extends StatelessWidget {
             ),
           ),
         ),
-        _buildActionCard(
-          icon: Icons.add_circle,
-          title: 'Add New Car',
-          subtitle: 'List a new vehicle',
-          color: Colors.green.shade400,
-          logo: Icons.add_circle,
-          onTap: () {},
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.add_circle,
+                title: 'Add Vehicle',
+                subtitle: 'List a new vehicle',
+                color: Colors.green.shade400,
+                logo: Icons.add_circle,
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/owner/add-vehicle',
+                    arguments: user,
+                  );
+                },
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
-        _buildActionCard(
-          icon: Icons.directions_car,
-          title: 'My Cars',
-          subtitle: 'Manage your vehicles',
-          color: Colors.blue.shade400,
-          logo: Icons.directions_car,
-          onTap: () {},
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.directions_car,
+                title: 'My Vehicles',
+                subtitle: 'Manage your vehicles',
+                color: Colors.blue.shade400,
+                logo: Icons.directions_car,
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/owner/my-vehicles',
+                    arguments: user,
+                  );
+                },
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
-        _buildActionCard(
-          icon: Icons.book_online,
-          title: 'Bookings',
-          subtitle: 'View rental bookings',
-          color: Colors.orange.shade400,
-          logo: Icons.book_online,
-          onTap: () {},
-        ),
-        const SizedBox(height: 12),
-        _buildActionCard(
-          icon: Icons.attach_money,
-          title: 'Earnings',
-          subtitle: 'Track your income',
-          color: Colors.teal.shade400,
-          logo: Icons.attach_money,
-          onTap: () {},
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.book_online,
+                title: 'Bookings',
+                subtitle: 'View rental bookings',
+                color: Colors.orange.shade400,
+                logo: Icons.book_online,
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/owner/bookings',
+                    arguments: user,
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ],
     );
