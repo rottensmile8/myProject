@@ -16,6 +16,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   final VehicleController _vehicleController = VehicleController();
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
+  VehicleCategory _selectedCategory = VehicleCategory.car;
 
   @override
   void initState() {
@@ -162,16 +163,81 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
     );
   }
 
+  List<Vehicle> get filteredVehicles {
+    return _vehicles.where((v) => v.category == _selectedCategory).toList();
+  }
+
   Widget _buildVehicleList() {
-    return RefreshIndicator(
-      onRefresh: _loadVehicles,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _vehicles.length,
-        itemBuilder: (context, index) {
-          final vehicle = _vehicles[index];
-          return _buildVehicleCard(vehicle);
-        },
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildCategoryTab(
+                Icons.directions_car,
+                VehicleCategory.car,
+                'Cars',
+              ),
+              _buildCategoryTab(
+                Icons.two_wheeler,
+                VehicleCategory.bike,
+                'Bikes',
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadVehicles,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: filteredVehicles.length,
+              itemBuilder: (context, index) {
+                final vehicle = filteredVehicles[index];
+                return _buildVehicleCard(vehicle);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryTab(
+    IconData icon,
+    VehicleCategory category,
+    String label,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedCategory = category;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: _selectedCategory == category
+              ? Colors.green.shade400
+              : Colors.green.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

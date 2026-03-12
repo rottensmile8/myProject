@@ -12,12 +12,6 @@ class OwnerDashboardPage extends StatelessWidget {
     required this.authController,
   });
 
-  // Placeholder analytics data
-  final int totalCars = 8;
-  final double totalEarnings = 5670.00;
-  final int activeBookings = 3;
-  final int totalCustomers = 15;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,9 +69,11 @@ class OwnerDashboardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildWelcomeSection(),
+                _buildWelcomeSection(context),
                 const SizedBox(height: 24),
                 _buildQuickActionsSection(context),
+                const SizedBox(height: 24),
+                _buildAdditionalMenuSection(), // Added this to the UI flow
               ],
             ),
           ),
@@ -86,7 +82,7 @@ class OwnerDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWelcomeSection() {
+  Widget _buildWelcomeSection(BuildContext context) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -102,54 +98,60 @@ class OwnerDashboardPage extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.green.shade700,
-              child: Text(
-                user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  fontSize: 24,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+            GestureDetector(
+              onTap: () => _showAnalyticsModal(context),
+              child: CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.green.shade700,
+                child: Text(
+                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome back,',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
-                  Text(
-                    user.fullName,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+              child: GestureDetector(
+                onTap: () => _showAnalyticsModal(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome back,',
+                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                     ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'OWNER',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green.shade700,
+                    Text(
+                      user.fullName,
+                      style: const TextStyle(
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'OWNER',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -158,109 +160,63 @@ class OwnerDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAnalyticsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            'Your Analytics',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
+  void _showAnalyticsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAnalyticsCard(
-              icon: Icons.directions_car,
-              title: 'Total Cars',
-              value: totalCars.toString(),
-              color: Colors.blue,
+            const Text(
+              'Your Analytics',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            _buildAnalyticsCard(
-              icon: Icons.attach_money,
-              title: 'Total Earnings',
-              value: '\$$totalEarnings',
-              color: Colors.green,
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _buildAnalyticsCardSmall(Icons.directions_car, 'Total Vehicles', '8'),
+                _buildAnalyticsCardSmall(Icons.attach_money, 'Total Earnings', '\$5,670'),
+              ],
             ),
-            _buildAnalyticsCard(
-              icon: Icons.book_online,
-              title: 'Active Bookings',
-              value: activeBookings.toString(),
-              color: Colors.orange,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildAnalyticsCardSmall(Icons.book_online, 'Active Bookings', '3'),
+                _buildAnalyticsCardSmall(Icons.people, 'Total Customers', '15'),
+              ],
             ),
-            _buildAnalyticsCard(
-              icon: Icons.people,
-              title: 'Total Customers',
-              value: totalCustomers.toString(),
-              color: Colors.purple,
-            ),
+            const SizedBox(height: 20),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildAnalyticsCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: 18, color: color),
-                ),
-                const Spacer(),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  title,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          ],
+  Widget _buildAnalyticsCardSmall(IconData icon, String title, String value) {
+    return Expanded(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Icon(icon, size: 30, color: Colors.green),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                title,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -281,67 +237,31 @@ class OwnerDashboardPage extends StatelessWidget {
             ),
           ),
         ),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                icon: Icons.add_circle,
-                title: 'Add Vehicle',
-                subtitle: 'List a new vehicle',
-                color: Colors.green.shade400,
-                logo: Icons.add_circle,
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/owner/add-vehicle',
-                    arguments: user,
-                  );
-                },
-              ),
-            ),
-          ],
+        _buildActionCard(
+          icon: Icons.add_circle,
+          title: 'Add Vehicle',
+          subtitle: 'List a new vehicle',
+          color: Colors.green.shade400,
+          logo: Icons.add_circle,
+          onTap: () => Navigator.of(context).pushNamed('/owner/add-vehicle', arguments: user),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                icon: Icons.directions_car,
-                title: 'My Vehicles',
-                subtitle: 'Manage your vehicles',
-                color: Colors.blue.shade400,
-                logo: Icons.directions_car,
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/owner/my-vehicles',
-                    arguments: user,
-                  );
-                },
-              ),
-            ),
-          ],
+        _buildActionCard(
+          icon: Icons.search,
+          title: 'Browse Vehicles',
+          subtitle: 'View listed vehicles',
+          color: Colors.blue.shade400,
+          logo: Icons.directions_car,
+          onTap: () => Navigator.of(context).pushNamed('/owner/my-vehicles', arguments: user),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                icon: Icons.book_online,
-                title: 'Bookings',
-                subtitle: 'View rental bookings',
-                color: Colors.orange.shade400,
-                logo: Icons.book_online,
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/owner/bookings',
-                    arguments: user,
-                  );
-                },
-              ),
-            ),
-          ],
+        _buildActionCard(
+          icon: Icons.book_online,
+          title: 'Bookings',
+          subtitle: 'View rental bookings',
+          color: Colors.orange.shade400,
+          logo: Icons.book_online,
+          onTap: () => Navigator.of(context).pushNamed('/owner/bookings', arguments: user),
         ),
       ],
     );
@@ -355,6 +275,7 @@ class OwnerDashboardPage extends StatelessWidget {
     required IconData logo,
     required VoidCallback onTap,
   }) {
+    // Removed the 'Expanded' wrapper from here to avoid layout conflicts
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

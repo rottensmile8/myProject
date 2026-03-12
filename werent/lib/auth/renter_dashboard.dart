@@ -12,12 +12,6 @@ class RenterDashboardPage extends StatelessWidget {
     required this.authController,
   });
 
-  // Placeholder analytics data - can be connected to backend later
-  final int totalRentals = 12;
-  final double totalSpent = 2450.00;
-  final int activeRentals = 1;
-  final int savedCars = 5;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,11 +69,9 @@ class RenterDashboardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildWelcomeSection(),
-                const SizedBox(height: 20),
-                _buildAnalyticsSection(),
+                _buildWelcomeSection(context),
                 const SizedBox(height: 24),
-                _buildQuickActionsSection(),
+                _buildQuickActionsSection(context),
                 const SizedBox(height: 24),
                 _buildAdditionalMenuSection(),
               ],
@@ -90,7 +82,7 @@ class RenterDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWelcomeSection() {
+  Widget _buildWelcomeSection(BuildContext context) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -106,54 +98,63 @@ class RenterDashboardPage extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.blue.shade700,
-              child: Text(
-                user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  fontSize: 24,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+            GestureDetector(
+              onTap: () => _showAnalyticsModal(context),
+              child: CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.blue.shade700,
+                child: Text(
+                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            GestureDetector(
+              onTap: () => _showAnalyticsModal(context),
+              child: const SizedBox(width: 16),
+            ),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome back,',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
-                  Text(
-                    user.fullName,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+              child: GestureDetector(
+                onTap: () => _showAnalyticsModal(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome back,',
+                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                     ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'RENTER',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue.shade700,
+                    Text(
+                      user.fullName,
+                      style: const TextStyle(
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'RENTER',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -162,106 +163,34 @@ class RenterDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAnalyticsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            'Your Analytics',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
-          children: [
-            _buildAnalyticsCard(
-              icon: Icons.check_circle_outline,
-              title: 'Total Rentals',
-              value: totalRentals.toString(),
-              color: Colors.green,
-            ),
-            _buildAnalyticsCard(
-              icon: Icons.attach_money,
-              title: 'Total Spent',
-              value: '\$$totalSpent',
-              color: Colors.orange,
-            ),
-            _buildAnalyticsCard(
-              icon: Icons.directions_car,
-              title: 'Active Rentals',
-              value: activeRentals.toString(),
-              color: Colors.blue,
-            ),
-            _buildAnalyticsCard(
-              icon: Icons.favorite_border,
-              title: 'Saved Cars',
-              value: savedCars.toString(),
-              color: Colors.red,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAnalyticsCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
+  void _showAnalyticsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            const Text(
+              'Your Analytics',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: 18, color: color),
-                ),
-                const Spacer(),
+                _buildAnalyticsCardSmall(Icons.check_circle, 'Total Rentals', '12'),
+                _buildAnalyticsCardSmall(Icons.attach_money, 'Total Spent', '\$2,450'),
               ],
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 12),
+            Row(
               children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  title,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
+                _buildAnalyticsCardSmall(Icons.directions_car, 'Active Rentals', '1'),
+                _buildAnalyticsCardSmall(Icons.favorite, 'Saved Vehicles', '5'),
               ],
             ),
           ],
@@ -270,7 +199,35 @@ class RenterDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionsSection() {
+  Widget _buildAnalyticsCardSmall(IconData icon, String title, String value) {
+    return Expanded(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Icon(icon, size: 30, color: Colors.blue),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                title,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -287,11 +244,11 @@ class RenterDashboardPage extends StatelessWidget {
         ),
         _buildActionCard(
           icon: Icons.search,
-          title: 'Browse Cars',
-          subtitle: 'Find your perfect car',
+          title: 'Browse Vehicles',
+          subtitle: 'Find your perfect vehicle',
           color: Colors.orange.shade400,
           logo: Icons.directions_car,
-          onTap: () {},
+          onTap: () => Navigator.of(context).pushNamed('/owner/my-vehicles', arguments: user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -305,8 +262,8 @@ class RenterDashboardPage extends StatelessWidget {
         const SizedBox(height: 12),
         _buildActionCard(
           icon: Icons.favorite,
-          title: 'Saved Cars',
-          subtitle: 'Your favorite cars',
+          title: 'Saved Vehicles',
+          subtitle: 'Your favorite vehicles',
           color: Colors.red.shade400,
           logo: Icons.favorite,
           onTap: () {},
