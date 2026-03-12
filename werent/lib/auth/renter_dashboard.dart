@@ -104,7 +104,9 @@ class RenterDashboardPage extends StatelessWidget {
                 radius: 30,
                 backgroundColor: Colors.blue.shade700,
                 child: Text(
-                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                  user.fullName.isNotEmpty
+                      ? user.fullName[0].toUpperCase()
+                      : 'U',
                   style: const TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -125,7 +127,10 @@ class RenterDashboardPage extends StatelessWidget {
                   children: [
                     Text(
                       'Welcome back,',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                     Text(
                       user.fullName,
@@ -174,22 +179,31 @@ class RenterDashboardPage extends StatelessWidget {
           children: [
             const Text(
               'Your Analytics',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             Row(
               children: [
-                _buildAnalyticsCardSmall(Icons.check_circle, 'Total Rentals', '12'),
-                _buildAnalyticsCardSmall(Icons.attach_money, 'Total Spent', '\$2,450'),
+                _buildAnalyticsCardSmall(
+                  Icons.check_circle,
+                  'Total Rentals',
+                  '12',
+                ),
+                _buildAnalyticsCardSmall(
+                  Icons.attach_money,
+                  'Total Spent',
+                  '\$2,450',
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _buildAnalyticsCardSmall(Icons.directions_car, 'Active Rentals', '1'),
+                _buildAnalyticsCardSmall(
+                  Icons.directions_car,
+                  'Active Rentals',
+                  '1',
+                ),
                 _buildAnalyticsCardSmall(Icons.favorite, 'Saved Vehicles', '5'),
               ],
             ),
@@ -248,7 +262,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Find your perfect vehicle',
           color: Colors.orange.shade400,
           logo: Icons.directions_car,
-          onTap: () => Navigator.of(context).pushNamed('/owner/my-vehicles', arguments: user),
+          onTap: () => Navigator.of(context).pushNamed('/browse-vehicles'),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -257,7 +271,9 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'View past rentals',
           color: Colors.purple.shade400,
           logo: Icons.history,
-          onTap: () {},
+          onTap: () => Navigator.of(
+            context,
+          ).pushNamed('/owner/bookings', arguments: user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(

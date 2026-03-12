@@ -6,6 +6,7 @@ import 'package:werent/auth/owner_dashboard.dart';
 import 'package:werent/auth/add_vehicle.dart';
 import 'package:werent/auth/my_vehicles.dart';
 import 'package:werent/auth/bookings.dart';
+import 'package:werent/auth/browse_vehicles.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
 
@@ -39,6 +40,9 @@ class MyApp extends StatelessWidget {
             );
           }
           return const LoginScreen();
+        },
+        '/browse-vehicles': (context) {
+          return const BrowseVehiclesScreen();
         },
         '/owner/dashboard': (context) {
           // Get user from arguments
