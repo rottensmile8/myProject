@@ -42,7 +42,8 @@ class MyApp extends StatelessWidget {
           return const LoginScreen();
         },
         '/browse-vehicles': (context) {
-          return const BrowseVehiclesScreen();
+          final user = ModalRoute.of(context)!.settings.arguments as User?;
+          return BrowseVehiclesScreen(user: user);
         },
         '/owner/dashboard': (context) {
           // Get user from arguments

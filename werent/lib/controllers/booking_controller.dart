@@ -45,6 +45,60 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  // Create a new booking
+  Future<Booking?> createBooking({
+    required String vehicleId,
+    required String vehicleName,
+    required String vehicleCategory,
+    required String renterId,
+    required String renterName,
+    required String renterEmail,
+    required DateTime startDate,
+    required DateTime endDate,
+    required double totalPrice,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/bookings/'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          'vehicleId': vehicleId,
+          'vehicleName': vehicleName,
+          'vehicleCategory': vehicleCategory,
+          'renterId': renterId,
+          'renterName': renterName,
+          'renterEmail': renterEmail,
+          'startDate': startDate.toIso8601String(),
+          'endDate': endDate.toIso8601String(),
+          'totalPrice': totalPrice,
+          'status': 'pending',
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final booking = Booking.fromJson(data);
+        _bookings.add(booking);
+        notifyListeners();
+        return booking;
+      } else {
+        final errorData = jsonDecode(response.body);
+        _error = errorData['error'] ?? 'Failed to create booking';
+        throw Exception(_error);
+      }
+    } catch (e) {
+      _error = e.toString();
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Update booking status
   Future<bool> updateBookingStatus(String bookingId, String status) async {
     _isLoading = true;

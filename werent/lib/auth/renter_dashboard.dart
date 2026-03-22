@@ -262,7 +262,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Find your perfect vehicle',
           color: Colors.orange.shade400,
           logo: Icons.directions_car,
-          onTap: () => Navigator.of(context).pushNamed('/browse-vehicles'),
+          onTap: () => Navigator.of(context).pushNamed('/browse-vehicles', arguments: user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
