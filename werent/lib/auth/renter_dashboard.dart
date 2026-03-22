@@ -271,9 +271,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'View past rentals',
           color: Colors.purple.shade400,
           logo: Icons.history,
-          onTap: () => Navigator.of(
-            context,
-          ).pushNamed('/owner/bookings', arguments: user),
+          onTap: () => Navigator.of(context).pushNamed('/renter/rental-history', arguments: user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -282,7 +280,7 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Your favorite vehicles',
           color: Colors.red.shade400,
           logo: Icons.favorite,
-          onTap: () {},
+          onTap: () => Navigator.of(context).pushNamed('/renter/saved-vehicles', arguments: user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(

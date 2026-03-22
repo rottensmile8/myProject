@@ -7,6 +7,8 @@ import 'package:werent/auth/add_vehicle.dart';
 import 'package:werent/auth/my_vehicles.dart';
 import 'package:werent/auth/bookings.dart';
 import 'package:werent/auth/browse_vehicles.dart';
+import 'package:werent/auth/rental_history_screen.dart';
+import 'package:werent/auth/saved_vehicles_screen.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
 
@@ -79,6 +81,17 @@ class MyApp extends StatelessWidget {
             return BookingsScreen(user: user);
           }
           return const LoginScreen();
+        },
+        '/renter/rental-history': (context) {
+          final user = ModalRoute.of(context)!.settings.arguments as User?;
+          if (user != null) {
+            return RentalHistoryScreen(user: user);
+          }
+          return const LoginScreen();
+        },
+        '/renter/saved-vehicles': (context) {
+          final user = ModalRoute.of(context)!.settings.arguments as User?;
+          return SavedVehiclesScreen(user: user);
         },
       },
       home: const LoginScreen(),

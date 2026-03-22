@@ -45,6 +45,37 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  // Get all bookings for a renter
+  Future<List<Booking>> getRenterBookings(String renterId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/bookings/?renter_id=$renterId'),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final renterBookings =
+            data.map((json) => Booking.fromJson(json)).toList();
+        return renterBookings;
+      } else {
+        final errorData = jsonDecode(response.body);
+        _error = errorData['error'] ?? 'Failed to fetch bookings';
+        throw Exception(_error);
+      }
+    } catch (e) {
+      _error = e.toString();
+      return [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Create a new booking
   Future<Booking?> createBooking({
     required String vehicleId,

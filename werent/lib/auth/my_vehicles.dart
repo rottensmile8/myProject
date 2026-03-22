@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/vehicle_controller.dart';
+import 'package:werent/auth/edit_vehicle_screen.dart';
 
 class MyVehiclesScreen extends StatefulWidget {
   final User user;
@@ -374,6 +375,27 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                           ? 'Mark as Rented'
                           : 'Mark as Available',
                       style: const TextStyle(color: Colors.orange),
+                    ),
+                  ),
+                ),
+                Container(width: 1, height: 40, color: Colors.grey.shade200),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => EditVehicleScreen(
+                            user: widget.user,
+                            vehicle: vehicle,
+                          ),
+                        ),
+                      );
+                      if (result == true) _loadVehicles();
+                    },
+                    icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                    label: const Text(
+                      'Edit',
+                      style: TextStyle(color: Colors.blue),
                     ),
                   ),
                 ),

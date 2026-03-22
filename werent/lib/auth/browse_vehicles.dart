@@ -4,6 +4,10 @@ import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/vehicle_controller.dart';
 import 'package:werent/controllers/booking_controller.dart';
 
+// Global in-memory saved vehicles store (session-local, persists while app is open)
+final Set<String> globalSavedVehicleIds = {};
+final List<Vehicle> globalSavedVehicles = [];
+
 class BrowseVehiclesScreen extends StatefulWidget {
   final User? user;
 
@@ -55,8 +59,62 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
   }
 
   List<Vehicle> get filteredVehicles {
-    if (_selectedCategory == null) return _vehicles;
-    return _vehicles.where((v) => v.category == _selectedCategory).toList();
+    List<Vehicle> vehicles = _selectedCategory == null
+        ? _vehicles
+        : _vehicles.where((v) => v.category == _selectedCategory).toList();
+
+    // Sort: available first, rented last
+    final available = vehicles.where((v) => v.isAvailable).toList();
+    final rented = vehicles.where((v) => !v.isAvailable).toList();
+    return [...available, ...rented];
+  }
+
+  List<Vehicle> get availableVehicles =>
+      filteredVehicles.where((v) => v.isAvailable).toList();
+
+  List<Vehicle> get rentedVehicles =>
+      filteredVehicles.where((v) => !v.isAvailable).toList();
+
+  bool _isSaved(String vehicleId) => globalSavedVehicleIds.contains(vehicleId);
+
+  void _toggleSave(Vehicle vehicle) {
+    setState(() {
+      if (globalSavedVehicleIds.contains(vehicle.id)) {
+        globalSavedVehicleIds.remove(vehicle.id);
+        globalSavedVehicles.removeWhere((v) => v.id == vehicle.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.favorite_border, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Removed from saved vehicles'),
+              ],
+            ),
+            backgroundColor: Colors.grey.shade700,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        globalSavedVehicleIds.add(vehicle.id);
+        // Replace any existing entry to keep list fresh
+        globalSavedVehicles.removeWhere((v) => v.id == vehicle.id);
+        globalSavedVehicles.add(vehicle);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.favorite, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Saved to your vehicles'),
+              ],
+            ),
+            backgroundColor: Colors.pink.shade600,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _showBookingDialog(Vehicle vehicle) async {
@@ -164,7 +222,6 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Start Date
                     _buildDateSelector(
                       label: 'Start Date',
                       date: startDate,
@@ -180,7 +237,6 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
                         if (picked != null) {
                           setDialogState(() {
                             startDate = picked;
-                            // Reset end date if it's before new start
                             if (endDate != null &&
                                 endDate!.isBefore(startDate!)) {
                               endDate = null;
@@ -190,7 +246,6 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
-                    // End Date
                     _buildDateSelector(
                       label: 'End Date',
                       date: endDate,
@@ -211,7 +266,6 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Price Summary
                     if (rentalDays > 0) ...[
                       Container(
                         padding: const EdgeInsets.all(14),
@@ -352,7 +406,6 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
   }) async {
     final user = widget.user!;
 
-    // Show loading indicator
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -377,7 +430,8 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
     final booking = await _bookingController.createBooking(
       vehicleId: vehicle.id,
       vehicleName: vehicle.name,
-      vehicleCategory: vehicle.category == VehicleCategory.bike ? 'bike' : 'car',
+      vehicleCategory:
+          vehicle.category == VehicleCategory.bike ? 'bike' : 'car',
       renterId: user.id,
       renterName: user.fullName,
       renterEmail: user.email,
@@ -458,19 +512,75 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
                         ? _buildEmptyState()
                         : RefreshIndicator(
                             onRefresh: _loadVehicles,
-                            child: ListView.builder(
+                            child: ListView(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: filteredVehicles.length,
-                              itemBuilder: (context, index) {
-                                final vehicle = filteredVehicles[index];
-                                return _buildVehicleCard(vehicle);
-                              },
+                              children: [
+                                // Available section
+                                if (availableVehicles.isNotEmpty) ...[
+                                  _buildSectionHeader(
+                                    'Available',
+                                    availableVehicles.length,
+                                    Colors.green,
+                                    Icons.check_circle_outline,
+                                  ),
+                                  ...availableVehicles.map(
+                                      (v) => _buildVehicleCard(v)),
+                                ],
+                                // Rented section
+                                if (rentedVehicles.isNotEmpty) ...[
+                                  _buildSectionHeader(
+                                    'Rented',
+                                    rentedVehicles.length,
+                                    Colors.red,
+                                    Icons.lock_clock,
+                                  ),
+                                  ...rentedVehicles.map(
+                                      (v) => _buildVehicleCard(v)),
+                                ],
+                              ],
                             ),
                           ),
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+      String title, int count, Color color, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -562,6 +672,7 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
   }
 
   Widget _buildVehicleCard(Vehicle vehicle) {
+    final saved = _isSaved(vehicle.id);
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 4,
@@ -624,8 +735,8 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
                   Expanded(
                     child: Text(
                       vehicle.pickupLocation,
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -633,23 +744,52 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
               ),
               const SizedBox(height: 8),
             ],
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: vehicle.isAvailable
-                    ? () => _showBookingDialog(vehicle)
-                    : null,
-                icon: const Icon(Icons.book_online, size: 18),
-                label: const Text('Book Now'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            // Book Now button + Favourite icon
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: vehicle.isAvailable
+                        ? () => _showBookingDialog(vehicle)
+                        : null,
+                    icon: const Icon(Icons.book_online, size: 18),
+                    label: const Text('Book Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                // Favourite / Save button
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: saved
+                        ? Colors.pink.shade50
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: saved
+                          ? Colors.pink.shade300
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: IconButton(
+                    onPressed: () => _toggleSave(vehicle),
+                    icon: Icon(
+                      saved ? Icons.favorite : Icons.favorite_border,
+                      color: saved ? Colors.pink.shade600 : Colors.grey.shade500,
+                      size: 22,
+                    ),
+                    tooltip: saved ? 'Remove from saved' : 'Save vehicle',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
