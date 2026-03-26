@@ -11,6 +11,7 @@ class User {
   final String email;
   final int? phoneNumber;
   final UserRole role;
+  final bool isActive;
   final List<String>? ownedCarIds; //only for owner
 
   User({
@@ -19,15 +20,17 @@ class User {
     required this.email,
     this.phoneNumber,
     required this.role,
+    this.isActive = false,
     this.ownedCarIds,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['_id'] ?? '',  // MongoDB _id
+      id: json['_id'] ?? '', // MongoDB _id
       fullName: json['fullName'],
       email: json['email'],
       role: json['role'] == 'owner' ? UserRole.owner : UserRole.renter,
+      isActive: json['isActive'] ?? true, // Default to true for existing users
     );
   }
 }

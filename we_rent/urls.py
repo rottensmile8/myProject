@@ -11,4 +11,5 @@ urlpatterns = [
     path('bookings/', views.bookings, name='bookings'),
     path('bookings/<str:booking_id>/',
          views.booking_detail, name='booking_detail'),
+    path('sync-users/', views.sync_users, name='sync_users'),
 ]

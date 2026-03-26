@@ -41,7 +41,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
-                  children: [
+                   children: [
                     Expanded(child: _buildRoleTab(UserRole.renter, 'Renter')),
                     Expanded(child: _buildRoleTab(UserRole.owner, 'Owner')),
                   ],

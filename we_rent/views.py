@@ -8,6 +8,7 @@ import json
 from django.http import JsonResponse
 from bson import ObjectId
 from datetime import datetime
+from .models import User
 
 
 def home(request):
@@ -38,10 +39,20 @@ def signup(request):
             "email": email,
             "password": hashed_password,
             "role": role,
+            "isActive": False,  # Store in MongoDB as well
         }
 
         # Insert user into MongoDB
         result = users_collection.insert_one(user)
+        user_id = str(result.inserted_id)
+
+        # ALSO create in Django SQL database for Admin Panel visibility
+        User.objects.create(
+            fullName=full_name,
+            email=email,
+            role=role,
+            isActive=False  # New users are inactive by default
+        )
 
         # Return success with user data
         return Response({
@@ -49,7 +60,8 @@ def signup(request):
             "fullName": full_name,
             "email": email,
             "role": role,
-            "_id": str(result.inserted_id)
+            "_id": user_id,
+            "isActive": False
         }, status=201)
 
     except Exception as e:
@@ -77,12 +89,33 @@ def login_user(request):
         if not check_password(password, user['password']):
             return Response({"message": "Invalid credentials"}, status=401)
 
+        # CHECK Admin Approval Status from Django SQL Database
+        try:
+            sql_user = User.objects.get(email=email)
+            is_active = sql_user.isActive
+        except User.DoesNotExist:
+            # If user exists in Mongo but not SQL, sync them now
+            sql_user = User.objects.create(
+                fullName=user['fullName'],
+                email=user['email'],
+                role=user['role'],
+                isActive=True  # Existing users are active by default
+            )
+            is_active = True
+        
+        # SYNC: Update MongoDB with the current isActive status from SQL
+        users_collection.update_one(
+            {"email": email},
+            {"$set": {"isActive": is_active}}
+        )
+
         # Return user data to Flutter
         return Response({
             "fullName": user['fullName'],
             "email": user['email'],
             "role": user['role'],
-            "_id": str(user['_id'])
+            "_id": str(user['_id']),
+            "isActive": is_active
         })
 
     except Exception as e:
@@ -314,3 +347,29 @@ def booking_detail(request, booking_id):
     except Exception as e:
         print(f"Booking detail error: {str(e)}")
         return Response({"error": f"Server error: {str(e)}"}, status=500)
+@api_view(['GET'])
+def sync_users(request):
+    """Temporary view to sync all MongoDB users to the Django Admin panel"""
+    try:
+        mongo_users = list(users_collection.find())
+        synced_count = 0
+        for m_user in mongo_users:
+            # Sync to SQL if missing
+            if not User.objects.filter(email=m_user['email']).exists():
+                User.objects.create(
+                    fullName=m_user.get('fullName', 'Unknown'),
+                    email=m_user['email'],
+                    role=m_user.get('role', 'renter'),
+                    isActive=True  # Existing users are set to active
+                )
+            
+            # Ensure isActive exists in MongoDB
+            if 'isActive' not in m_user:
+                users_collection.update_one(
+                    {"email": m_user['email']},
+                    {"$set": {"isActive": True}}
+                )
+            synced_count += 1
+        return Response({"message": f"Successfully synced {synced_count} users to Django Admin."})
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

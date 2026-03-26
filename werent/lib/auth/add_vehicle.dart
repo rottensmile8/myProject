@@ -43,6 +43,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   Future<void> _submitVehicle() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Check if user is approved
+    if (!widget.user.isActive) {
+      _showApprovalRequiredDialog(context);
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -85,6 +91,24 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         });
       }
     }
+  }
+
+  void _showApprovalRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Approval Required'),
+        content: const Text(
+          'Your account is currently pending admin approval. You can view your dashboard, but adding new vehicles is disabled until your account is activated.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

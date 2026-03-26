@@ -122,6 +122,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!widget.user.isActive) _buildApprovalPendingBanner(),
                 _buildWelcomeSection(context),
                 const SizedBox(height: 24),
                 _buildQuickActionsSection(context),
@@ -131,6 +132,45 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildApprovalPendingBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Account Approval Pending',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                Text(
+                  'Your account is being reviewed by the admin. You can list vehicles once approved.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -340,8 +380,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           subtitle: 'List a new vehicle',
           color: Colors.green.shade400,
           logo: Icons.add_circle,
-          onTap: () => Navigator.of(context)
-              .pushNamed('/owner/add-vehicle', arguments: widget.user),
+          onTap: () => Navigator.of(context).pushNamed('/owner/add-vehicle', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -350,8 +389,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           subtitle: 'View listed vehicles',
           color: Colors.blue.shade400,
           logo: Icons.directions_car,
-          onTap: () => Navigator.of(context)
-              .pushNamed('/owner/my-vehicles', arguments: widget.user),
+          onTap: () => Navigator.of(context).pushNamed('/owner/my-vehicles', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -360,8 +398,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           subtitle: 'View rental bookings',
           color: Colors.orange.shade400,
           logo: Icons.book_online,
-          onTap: () => Navigator.of(context)
-              .pushNamed('/owner/bookings', arguments: widget.user),
+          onTap: () => Navigator.of(context).pushNamed('/owner/bookings', arguments: widget.user),
         ),
       ],
     );

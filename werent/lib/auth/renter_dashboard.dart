@@ -111,6 +111,7 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!widget.user.isActive) _buildApprovalPendingBanner(),
                 _buildWelcomeSection(context),
                 const SizedBox(height: 24),
                 _buildQuickActionsSection(context),
@@ -120,6 +121,45 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildApprovalPendingBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Account Approval Pending',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                Text(
+                  'Your account is being reviewed by the admin. Some features will be available once approved.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -342,8 +382,7 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
           subtitle: 'Find your perfect vehicle',
           color: Colors.orange.shade400,
           logo: Icons.directions_car,
-          onTap: () =>
-              Navigator.of(context).pushNamed('/browse-vehicles', arguments: widget.user),
+          onTap: () => Navigator.of(context).pushNamed('/browse-vehicles', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -352,8 +391,7 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
           subtitle: 'View past rentals',
           color: Colors.purple.shade400,
           logo: Icons.history,
-          onTap: () =>
-              Navigator.of(context).pushNamed('/renter/rental-history', arguments: widget.user),
+          onTap: () => Navigator.of(context).pushNamed('/renter/rental-history', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -362,8 +400,7 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
           subtitle: 'Your favorite vehicles',
           color: Colors.red.shade400,
           logo: Icons.favorite,
-          onTap: () =>
-              Navigator.of(context).pushNamed('/renter/saved-vehicles', arguments: widget.user),
+          onTap: () => Navigator.of(context).pushNamed('/renter/saved-vehicles', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(

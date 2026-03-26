@@ -143,6 +143,12 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
       return;
     }
 
+    // Check if user is approved
+    if (!widget.user!.isActive) {
+      _showApprovalRequiredDialog(context);
+      return;
+    }
+
     DateTime? startDate;
     DateTime? endDate;
     double totalPrice = 0;
@@ -793,6 +799,24 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showApprovalRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Approval Required'),
+        content: const Text(
+          'Your account is currently pending admin approval. You can browse vehicles, but booking is disabled until your account is activated.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }
