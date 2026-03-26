@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/widgets/custom_field.dart';
 import 'package:werent/controllers/auth_controller.dart';
-import 'package:werent/auth/renter_dashboard.dart';
-import 'package:werent/auth/owner_dashboard.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

@@ -323,7 +323,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
 
             if (_selectedCategory == VehicleCategory.car) ...[
               DropdownButtonFormField<FuelType>(
-                value: _selectedFuelType,
+                initialValue: _selectedFuelType,
                 decoration: _inputDecoration(
                     'Fuel Type', Icons.local_gas_station),
                 items: FuelType.values.map((fuel) {
@@ -339,7 +339,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<Transmission>(
-                value: _selectedTransmission,
+                initialValue: _selectedTransmission,
                 decoration:
                     _inputDecoration('Transmission', Icons.settings),
                 items: Transmission.values.map((trans) {

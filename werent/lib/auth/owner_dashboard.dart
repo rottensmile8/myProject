@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
+import 'package:werent/models/vehicle_model.dart';
+import 'package:werent/models/booking_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
+import 'package:werent/controllers/booking_controller.dart';
+import 'package:werent/controllers/vehicle_controller.dart';
 
-class OwnerDashboardPage extends StatelessWidget {
+class OwnerDashboardPage extends StatefulWidget {
   final User user;
   final AuthController authController;
 
@@ -11,6 +15,55 @@ class OwnerDashboardPage extends StatelessWidget {
     required this.user,
     required this.authController,
   });
+
+  @override
+  State<OwnerDashboardPage> createState() => _OwnerDashboardPageState();
+}
+
+class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
+  final BookingController _bookingController = BookingController();
+  final VehicleController _vehicleController = VehicleController();
+
+  List<Booking> _bookings = [];
+  List<Vehicle> _vehicles = [];
+  bool _analyticsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnalytics();
+  }
+
+  Future<void> _loadAnalytics() async {
+    setState(() => _analyticsLoading = true);
+    final results = await Future.wait([
+      _bookingController.getOwnerBookings(widget.user.id),
+      _vehicleController.getOwnerVehicles(widget.user.id),
+    ]);
+    if (mounted) {
+      setState(() {
+        _bookings = results[0] as List<Booking>;
+        _vehicles = results[1] as List<Vehicle>;
+        _analyticsLoading = false;
+      });
+    }
+  }
+
+  // ── Computed analytics ───────────────────────────────────────────────────────
+
+  int get _totalVehicles => _vehicles.length;
+
+  double get _totalEarnings => _bookings
+      .where((b) => b.status == 'confirmed' || b.status == 'completed')
+      .fold(0.0, (sum, b) => sum + b.totalPrice);
+
+  int get _activeBookings =>
+      _bookings.where((b) => b.status == 'confirmed').length;
+
+  int get _totalCustomers =>
+      _bookings.map((b) => b.renterId).toSet().length;
+
+  // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +98,7 @@ class OwnerDashboardPage extends StatelessWidget {
               );
 
               if (confirmLogout == true) {
-                await authController.logout();
+                await widget.authController.logout();
                 if (context.mounted) {
                   Navigator.pushReplacementNamed(context, '/auth');
                 }
@@ -73,7 +126,7 @@ class OwnerDashboardPage extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildQuickActionsSection(context),
                 const SizedBox(height: 24),
-                _buildAdditionalMenuSection(), // Added this to the UI flow
+                _buildAdditionalMenuSection(),
               ],
             ),
           ),
@@ -104,7 +157,9 @@ class OwnerDashboardPage extends StatelessWidget {
                 radius: 30,
                 backgroundColor: Colors.green.shade700,
                 child: Text(
-                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                  widget.user.fullName.isNotEmpty
+                      ? widget.user.fullName[0].toUpperCase()
+                      : 'U',
                   style: const TextStyle(
                     fontSize: 24,
                     color: Colors.white,
@@ -122,10 +177,11 @@ class OwnerDashboardPage extends StatelessWidget {
                   children: [
                     Text(
                       'Welcome back,',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                      style: TextStyle(
+                          fontSize: 14, color: Colors.grey.shade600),
                     ),
                     Text(
-                      user.fullName,
+                      widget.user.fullName,
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -161,38 +217,76 @@ class OwnerDashboardPage extends StatelessWidget {
   }
 
   void _showAnalyticsModal(BuildContext context) {
+    // Refresh data every time the modal is opened
+    _loadAnalytics();
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Your Analytics',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Row(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          if (_analyticsLoading) {
+            return const SizedBox(
+              height: 200,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildAnalyticsCardSmall(Icons.directions_car, 'Total Vehicles', '8'),
-                _buildAnalyticsCardSmall(Icons.attach_money, 'Total Earnings', '\$5,670'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Your Analytics',
+                      style: TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () async {
+                        await _loadAnalytics();
+                        if (context.mounted) setModalState(() {});
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _buildAnalyticsCardSmall(
+                        Icons.directions_car,
+                        'Total Vehicles',
+                        _totalVehicles.toString()),
+                    _buildAnalyticsCardSmall(
+                        Icons.attach_money,
+                        'Total Earnings',
+                        'NPR ${_totalEarnings.toStringAsFixed(0)}'),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildAnalyticsCardSmall(
+                        Icons.book_online,
+                        'Active Bookings',
+                        _activeBookings.toString()),
+                    _buildAnalyticsCardSmall(
+                        Icons.people,
+                        'Total Customers',
+                        _totalCustomers.toString()),
+                  ],
+                ),
+                const SizedBox(height: 20),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildAnalyticsCardSmall(Icons.book_online, 'Active Bookings', '3'),
-                _buildAnalyticsCardSmall(Icons.people, 'Total Customers', '15'),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -208,11 +302,14 @@ class OwnerDashboardPage extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
               Text(
                 title,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style:
+                    TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -243,7 +340,8 @@ class OwnerDashboardPage extends StatelessWidget {
           subtitle: 'List a new vehicle',
           color: Colors.green.shade400,
           logo: Icons.add_circle,
-          onTap: () => Navigator.of(context).pushNamed('/owner/add-vehicle', arguments: user),
+          onTap: () => Navigator.of(context)
+              .pushNamed('/owner/add-vehicle', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -252,7 +350,8 @@ class OwnerDashboardPage extends StatelessWidget {
           subtitle: 'View listed vehicles',
           color: Colors.blue.shade400,
           logo: Icons.directions_car,
-          onTap: () => Navigator.of(context).pushNamed('/owner/my-vehicles', arguments: user),
+          onTap: () => Navigator.of(context)
+              .pushNamed('/owner/my-vehicles', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -261,7 +360,8 @@ class OwnerDashboardPage extends StatelessWidget {
           subtitle: 'View rental bookings',
           color: Colors.orange.shade400,
           logo: Icons.book_online,
-          onTap: () => Navigator.of(context).pushNamed('/owner/bookings', arguments: user),
+          onTap: () => Navigator.of(context)
+              .pushNamed('/owner/bookings', arguments: widget.user),
         ),
       ],
     );
@@ -275,7 +375,6 @@ class OwnerDashboardPage extends StatelessWidget {
     required IconData logo,
     required VoidCallback onTap,
   }) {
-    // Removed the 'Expanded' wrapper from here to avoid layout conflicts
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

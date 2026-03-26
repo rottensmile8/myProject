@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
+import 'package:werent/models/booking_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
+import 'package:werent/controllers/booking_controller.dart';
+import 'package:werent/auth/browse_vehicles.dart';
 
-class RenterDashboardPage extends StatelessWidget {
+class RenterDashboardPage extends StatefulWidget {
   final User user;
   final AuthController authController;
 
@@ -11,6 +14,45 @@ class RenterDashboardPage extends StatelessWidget {
     required this.user,
     required this.authController,
   });
+
+  @override
+  State<RenterDashboardPage> createState() => _RenterDashboardPageState();
+}
+
+class _RenterDashboardPageState extends State<RenterDashboardPage> {
+  final BookingController _bookingController = BookingController();
+
+  List<Booking> _bookings = [];
+  bool _analyticsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnalytics();
+  }
+
+  Future<void> _loadAnalytics() async {
+    setState(() => _analyticsLoading = true);
+    final bookings = await _bookingController.getRenterBookings(widget.user.id);
+    if (mounted) {
+      setState(() {
+        _bookings = bookings;
+        _analyticsLoading = false;
+      });
+    }
+  }
+
+  // ── Computed analytics ──────────────────────────────────────────────────────
+
+  int get _totalBookings => _bookings.length;
+
+  double get _totalSpent => _bookings
+      .where((b) => b.status == 'confirmed' || b.status == 'completed')
+      .fold(0.0, (sum, b) => sum + b.totalPrice);
+
+  int get _savedVehiclesCount => globalSavedVehicles.length;
+
+  // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +87,7 @@ class RenterDashboardPage extends StatelessWidget {
               );
 
               if (confirmLogout == true) {
-                await authController.logout();
+                await widget.authController.logout();
                 if (context.mounted) {
                   Navigator.pushReplacementNamed(context, '/auth');
                 }
@@ -104,8 +146,8 @@ class RenterDashboardPage extends StatelessWidget {
                 radius: 30,
                 backgroundColor: Colors.blue.shade700,
                 child: Text(
-                  user.fullName.isNotEmpty
-                      ? user.fullName[0].toUpperCase()
+                  widget.user.fullName.isNotEmpty
+                      ? widget.user.fullName[0].toUpperCase()
                       : 'U',
                   style: const TextStyle(
                     fontSize: 24,
@@ -133,7 +175,7 @@ class RenterDashboardPage extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      user.fullName,
+                      widget.user.fullName,
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -169,46 +211,83 @@ class RenterDashboardPage extends StatelessWidget {
   }
 
   void _showAnalyticsModal(BuildContext context) {
+    // Refresh data every time the modal is opened
+    _loadAnalytics();
+
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Your Analytics',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Row(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          if (_analyticsLoading) {
+            return const SizedBox(
+              height: 200,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildAnalyticsCardSmall(
-                  Icons.check_circle,
-                  'Total Rentals',
-                  '12',
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Your Analytics',
+                      style: TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () async {
+                        await _loadAnalytics();
+                        if (context.mounted) setModalState(() {});
+                      },
+                    ),
+                  ],
                 ),
-                _buildAnalyticsCardSmall(
-                  Icons.attach_money,
-                  'Total Spent',
-                  '\$2,450',
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _buildAnalyticsCardSmall(
+                      Icons.check_circle,
+                      'Total Bookings',
+                      _totalBookings.toString(),
+                    ),
+                    _buildAnalyticsCardSmall(
+                      Icons.attach_money,
+                      'Total Spent',
+                      'NPR ${_totalSpent.toStringAsFixed(0)}',
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildAnalyticsCardSmall(
+                      Icons.favorite,
+                      'Saved Vehicles',
+                      _savedVehiclesCount.toString(),
+                    ),
+                    _buildAnalyticsCardSmall(
+                      Icons.pending_actions,
+                      'Pending',
+                      _bookings
+                          .where((b) => b.status == 'pending')
+                          .length
+                          .toString(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildAnalyticsCardSmall(
-                  Icons.directions_car,
-                  'Active Rentals',
-                  '1',
-                ),
-                _buildAnalyticsCardSmall(Icons.favorite, 'Saved Vehicles', '5'),
-              ],
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -225,9 +304,10 @@ class RenterDashboardPage extends StatelessWidget {
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.center,
               ),
               Text(
                 title,
@@ -262,7 +342,8 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Find your perfect vehicle',
           color: Colors.orange.shade400,
           logo: Icons.directions_car,
-          onTap: () => Navigator.of(context).pushNamed('/browse-vehicles', arguments: user),
+          onTap: () =>
+              Navigator.of(context).pushNamed('/browse-vehicles', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -271,7 +352,8 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'View past rentals',
           color: Colors.purple.shade400,
           logo: Icons.history,
-          onTap: () => Navigator.of(context).pushNamed('/renter/rental-history', arguments: user),
+          onTap: () =>
+              Navigator.of(context).pushNamed('/renter/rental-history', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -280,7 +362,8 @@ class RenterDashboardPage extends StatelessWidget {
           subtitle: 'Your favorite vehicles',
           color: Colors.red.shade400,
           logo: Icons.favorite,
-          onTap: () => Navigator.of(context).pushNamed('/renter/saved-vehicles', arguments: user),
+          onTap: () =>
+              Navigator.of(context).pushNamed('/renter/saved-vehicles', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(

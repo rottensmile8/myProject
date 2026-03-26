@@ -3,8 +3,6 @@ import 'package:werent/controllers/auth_controller.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/widgets/custom_field.dart';
 import 'package:werent/auth/signup_screen.dart';
-import 'package:werent/auth/renter_dashboard.dart';
-import 'package:werent/auth/owner_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

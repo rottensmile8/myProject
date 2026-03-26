@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:werent/models/user_model.dart';
-import 'package:werent/controllers/auth_controller.dart';
 
 
 class DashboardPage extends StatelessWidget {

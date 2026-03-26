@@ -301,7 +301,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             // Fuel Type (only for cars)
             if (_selectedCategory == VehicleCategory.car) ...[
               DropdownButtonFormField<FuelType>(
-                value: _selectedFuelType,
+                initialValue: _selectedFuelType,
                 decoration: _inputDecoration(
                   'Fuel Type',
                   Icons.local_gas_station,
@@ -324,7 +324,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
               // Transmission (only for cars)
               DropdownButtonFormField<Transmission>(
-                value: _selectedTransmission,
+                initialValue: _selectedTransmission,
                 decoration: _inputDecoration('Transmission', Icons.settings),
                 items: Transmission.values.map((trans) {
                   return DropdownMenuItem(
