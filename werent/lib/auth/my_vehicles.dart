@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
@@ -244,40 +245,35 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   }
 
   Widget _buildVehicleCard(Vehicle vehicle) {
+    final hasImage =
+        vehicle.imageBase64 != null && vehicle.imageBase64!.isNotEmpty;
     return Card(
       elevation: 4,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
-          // Vehicle header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+          // Vehicle photo or fallback header
+          if (hasImage)
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.memory(
+                base64Decode(vehicle.imageBase64!),
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    _buildIconHeader(vehicle),
               ),
-            ),
+            )
+          else
+            _buildIconHeader(vehicle),
+          // Name, brand, year + availability
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    vehicle.category == VehicleCategory.bike
-                        ? Icons.two_wheeler
-                        : Icons.directions_car,
-                    size: 32,
-                    color: Colors.green.shade700,
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,25 +281,21 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                       Text(
                         vehicle.name,
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 17, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '${vehicle.brand} • ${vehicle.modelYear}',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
+                            fontSize: 13, color: Colors.grey.shade600),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                      horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: vehicle.isAvailable
                         ? Colors.green.shade100
@@ -313,35 +305,36 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                   child: Text(
                     vehicle.isAvailable ? 'Available' : 'Rented',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: vehicle.isAvailable
                           ? Colors.green.shade700
-                          : Colors.red.shade700,
+                          : const Color.fromARGB(255, 198, 73, 73),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          // Vehicle details
+          // Vehicle details —  use Wrap to prevent overflow
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 6,
                   children: [
                     _buildDetailItem(
                       Icons.attach_money,
                       vehicle.pricePerDayNPR,
                     ),
                     if (vehicle.category == VehicleCategory.car) ...[
-                      const SizedBox(width: 24),
                       _buildDetailItem(
                         Icons.local_gas_station,
                         vehicle.fuelTypeDisplay,
                       ),
-                      const SizedBox(width: 24),
                       _buildDetailItem(
                         Icons.settings,
                         vehicle.transmissionDisplay,
@@ -349,7 +342,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 _buildDetailItem(Icons.location_on, vehicle.pickupLocation),
               ],
             ),
@@ -426,6 +419,25 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
         const SizedBox(width: 4),
         Text(text, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
       ],
+    );
+  }
+
+  Widget _buildIconHeader(Vehicle vehicle) {
+    return Container(
+      height: 90,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Icon(
+        vehicle.category == VehicleCategory.bike
+            ? Icons.two_wheeler
+            : Icons.directions_car,
+        size: 40,
+        color: Colors.green.shade400,
+      ),
     );
   }
 }

@@ -17,6 +17,8 @@ class Vehicle {
   final String pickupLocation;
   final bool isAvailable;
   final DateTime createdAt;
+  final String? imageBase64; // optional vehicle photo
+  final String? ownerName;  // populated when fetching all vehicles
 
   Vehicle({
     required this.id,
@@ -31,6 +33,8 @@ class Vehicle {
     required this.pickupLocation,
     this.isAvailable = true,
     required this.createdAt,
+    this.imageBase64,
+    this.ownerName,
   });
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
@@ -51,11 +55,13 @@ class Vehicle {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
+      imageBase64: json['imageBase64'] as String?,
+      ownerName: json['ownerName'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final map = <String, dynamic>{
       'ownerId': ownerId,
       'category': category == VehicleCategory.bike ? 'bike' : 'car',
       'name': name,
@@ -67,6 +73,8 @@ class Vehicle {
       'pickupLocation': pickupLocation,
       'isAvailable': isAvailable,
     };
+    if (imageBase64 != null) map['imageBase64'] = imageBase64;
+    return map;
   }
 
   static FuelType _parseFuelType(String? fuelType) {

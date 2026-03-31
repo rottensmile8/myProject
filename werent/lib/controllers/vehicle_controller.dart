@@ -56,6 +56,7 @@ class VehicleController extends ChangeNotifier {
     required FuelType fuelType,
     required Transmission transmission,
     required String pickupLocation,
+    String? imageBase64,
   }) async {
     _isLoading = true;
     _error = null;
@@ -74,6 +75,7 @@ class VehicleController extends ChangeNotifier {
         transmission: transmission,
         pickupLocation: pickupLocation,
         createdAt: DateTime.now(),
+        imageBase64: imageBase64,
       );
 
       final response = await http.post(
@@ -184,6 +186,7 @@ class VehicleController extends ChangeNotifier {
         pickupLocation: vehicle.pickupLocation,
         isAvailable: !vehicle.isAvailable,
         createdAt: vehicle.createdAt,
+        imageBase64: vehicle.imageBase64,
       );
       return await updateVehicle(updatedVehicle);
     }

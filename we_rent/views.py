@@ -143,6 +143,12 @@ def vehicles(request):
                 if 'createdAt' in vehicle:
                     vehicle['createdAt'] = vehicle['createdAt'].isoformat() if isinstance(
                         vehicle['createdAt'], datetime) else vehicle['createdAt']
+                # Attach owner's name
+                try:
+                    owner = users_collection.find_one({"_id": ObjectId(vehicle.get('ownerId', ''))}) if vehicle.get('ownerId') else None
+                    vehicle['ownerName'] = owner.get('fullName', 'Unknown') if owner else 'Unknown'
+                except Exception:
+                    vehicle['ownerName'] = 'Unknown'
 
             return Response(vehicles)
         except Exception as e:
@@ -161,6 +167,7 @@ def vehicles(request):
             fuel_type = data.get('fuelType')
             transmission = data.get('transmission')
             pickup_location = data.get('pickupLocation')
+            image_base64 = data.get('imageBase64')  # optional vehicle photo
 
             if not all([owner_id, category, name, brand, model_year, price_per_day, pickup_location]):
                 return Response({"error": "All fields are required"}, status=400)
@@ -178,6 +185,8 @@ def vehicles(request):
                 "isAvailable": True,
                 "createdAt": datetime.now()
             }
+            if image_base64:
+                vehicle["imageBase64"] = image_base64
 
             result = vehicles_collection.insert_one(vehicle)
             vehicle['_id'] = str(result.inserted_id)
@@ -207,7 +216,8 @@ def vehicle_detail(request, vehicle_id):
             update_data = {}
 
             for key in ['category', 'name', 'brand', 'modelYear', 'pricePerDay',
-                        'fuelType', 'transmission', 'pickupLocation', 'isAvailable']:
+                        'fuelType', 'transmission', 'pickupLocation', 'isAvailable',
+                        'imageBase64']:
                 if key in data:
                     update_data[key] = data[key]
 

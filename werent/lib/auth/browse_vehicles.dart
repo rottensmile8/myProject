@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
@@ -149,6 +150,186 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
       return;
     }
 
+    // Step 1: Show Terms & Conditions agreement dialog
+    final agreed = await _showRentalAgreementDialog(vehicle);
+    if (!agreed || !mounted) return;
+
+    // Step 2: Show booking date picker dialog
+    await _showDatePickerDialog(vehicle);
+  }
+
+  /// Shows the Rental Terms & Conditions dialog.
+  /// Returns true if the user agreed, false if they cancelled.
+  Future<bool> _showRentalAgreementDialog(Vehicle vehicle) async {
+    bool accepted = false;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        bool checkboxValue = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              titlePadding: EdgeInsets.zero,
+              title: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.gavel, color: Colors.white, size: 26),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Rental Agreement',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      'Please read and accept the terms before booking ${vehicle.name}.',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 220,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          _rentalTermsText(),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.6,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: () =>
+                          setDialogState(() => checkboxValue = !checkboxValue),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: checkboxValue,
+                              activeColor: Colors.blue.shade700,
+                              onChanged: (val) => setDialogState(
+                                  () => checkboxValue = val ?? false),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'I have read and agree to the Rental Terms & Conditions.',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: checkboxValue
+                      ? () {
+                          accepted = true;
+                          Navigator.pop(context);
+                        }
+                      : null,
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Proceed to Book'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    return accepted;
+  }
+
+  String _rentalTermsText() {
+    return '''
+1. ELIGIBILITY
+The renter must be at least 18 years old and possess a valid driving license appropriate for the vehicle category being rented.
+
+2. BOOKING & PAYMENT
+Booking is confirmed only after the owner's approval. Full payment of the agreed rental amount (NPR) must be made at pickup unless otherwise arranged. The total price shown is inclusive of the rental period selected.
+
+3. VEHICLE USE
+The renter agrees to use the vehicle only for lawful purposes and within the territory of Nepal. Sub-renting, racing, or off-road use is strictly prohibited unless the vehicle is explicitly listed for such use.
+
+4. FUEL & MAINTENANCE
+The vehicle must be returned in the same fuel level and condition as received. Any damage, excessive dirt, or fuel deficiency will be charged to the renter.
+
+5. DAMAGE & LIABILITY
+The renter is fully responsible for any damage caused to the vehicle during the rental period, including accidental damage, theft, or vandalism. The owner's insurance, if any, does not cover renter negligence.
+
+6. CANCELLATION POLICY
+Cancellations made more than 24 hours before the start date will receive a full refund. Cancellations within 24 hours may be subject to a cancellation fee as determined by the owner.
+
+7. LATE RETURN
+Vehicles returned after the agreed end date will incur additional charges at the daily rental rate for each extra day or part thereof.
+
+8. TRAFFIC VIOLATIONS & FINES
+Any traffic violations, fines, or penalties incurred during the rental period are solely the renter's responsibility.
+
+9. ACCIDENTS
+In the event of an accident, the renter must immediately notify the owner and relevant authorities. A full report must be provided to the owner within 24 hours.
+
+10. GOVERNING LAW
+This agreement is governed by the laws of Nepal. Any disputes shall be settled under the jurisdiction of the courts of Nepal.
+
+By proceeding with this booking, you acknowledge that you have read, understood, and agree to all the terms and conditions stated above.
+''';
+  }
+
+  Future<void> _showDatePickerDialog(Vehicle vehicle) async {
     DateTime? startDate;
     DateTime? endDate;
     double totalPrice = 0;
@@ -676,129 +857,172 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
       ),
     );
   }
-
   Widget _buildVehicleCard(Vehicle vehicle) {
     final saved = _isSaved(vehicle.id);
+    final hasImage = vehicle.imageBase64 != null && vehicle.imageBase64!.isNotEmpty;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Vehicle image or icon banner
+          if (hasImage)
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.memory(
+                base64Decode(vehicle.imageBase64!),
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildVehicleIconBanner(vehicle),
+              ),
+            )
+          else
+            _buildVehicleIconBanner(vehicle),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    vehicle.category == VehicleCategory.bike
-                        ? Icons.two_wheeler
-                        : Icons.directions_car,
-                    color: Colors.blue.shade700,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        vehicle.name,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vehicle.name,
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text('${vehicle.brand} • ${vehicle.modelYear}'),
+                          if (vehicle.ownerName != null &&
+                              vehicle.ownerName!.isNotEmpty)
+                            Row(
+                              children: [
+                                Icon(Icons.person_outline,
+                                    size: 13,
+                                    color: Colors.grey.shade500),
+                                const SizedBox(width: 3),
+                                Text(
+                                  vehicle.ownerName!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
                       ),
-                      Text('${vehicle.brand} • ${vehicle.modelYear}'),
+                    ),
+                    _buildStatusBadge(vehicle.isAvailable),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _buildInfoTag('NPR ${vehicle.pricePerDay.toStringAsFixed(0)}/day'),
+                    _buildInfoTag(vehicle.fuelTypeDisplay),
+                    _buildInfoTag(vehicle.transmissionDisplay),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (vehicle.pickupLocation.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Icon(Icons.location_on,
+                          size: 14, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          vehicle.pickupLocation,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                _buildStatusBadge(vehicle.isAvailable),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildInfoTag('Rs ${vehicle.pricePerDayNPR}'),
-                const SizedBox(width: 8),
-                _buildInfoTag(vehicle.fuelTypeDisplay),
-                const SizedBox(width: 8),
-                _buildInfoTag(vehicle.transmissionDisplay),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (vehicle.pickupLocation.isNotEmpty) ...[
-              Row(
-                children: [
-                  Icon(Icons.location_on,
-                      size: 14, color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      vehicle.pickupLocation,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  const SizedBox(height: 8),
                 ],
-              ),
-              const SizedBox(height: 8),
-            ],
-            // Book Now button + Favourite icon
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: vehicle.isAvailable
-                        ? () => _showBookingDialog(vehicle)
-                        : null,
-                    icon: const Icon(Icons.book_online, size: 18),
-                    label: const Text('Book Now'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                // Book Now button + Favourite icon
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: vehicle.isAvailable
+                            ? () => _showBookingDialog(vehicle)
+                            : null,
+                        icon: const Icon(Icons.book_online, size: 18),
+                        label: const Text('Book Now'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Favourite / Save button
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  decoration: BoxDecoration(
-                    color: saved
-                        ? Colors.pink.shade50
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: saved
-                          ? Colors.pink.shade300
-                          : Colors.grey.shade300,
+                    const SizedBox(width: 8),
+                    // Favourite / Save button
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: saved
+                            ? Colors.pink.shade50
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: saved
+                              ? Colors.pink.shade300
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: IconButton(
+                        onPressed: () => _toggleSave(vehicle),
+                        icon: Icon(
+                          saved ? Icons.favorite : Icons.favorite_border,
+                          color: saved
+                              ? Colors.pink.shade600
+                              : Colors.grey.shade500,
+                          size: 22,
+                        ),
+                        tooltip: saved ? 'Remove from saved' : 'Save vehicle',
+                      ),
                     ),
-                  ),
-                  child: IconButton(
-                    onPressed: () => _toggleSave(vehicle),
-                    icon: Icon(
-                      saved ? Icons.favorite : Icons.favorite_border,
-                      color: saved ? Colors.pink.shade600 : Colors.grey.shade500,
-                      size: 22,
-                    ),
-                    tooltip: saved ? 'Remove from saved' : 'Save vehicle',
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleIconBanner(Vehicle vehicle) {
+    return Container(
+      height: 90,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Icon(
+        vehicle.category == VehicleCategory.bike
+            ? Icons.two_wheeler
+            : Icons.directions_car,
+        color: Colors.blue.shade300,
+        size: 52,
       ),
     );
   }
