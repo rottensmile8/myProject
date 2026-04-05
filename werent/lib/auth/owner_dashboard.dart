@@ -63,6 +63,12 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   int get _totalCustomers =>
       _bookings.map((b) => b.renterId).toSet().length;
 
+  int get _pendingBookingsCount =>
+      _bookings.where((b) => b.status == 'pending').length;
+
+  List<Booking> get _pendingBookings =>
+      _bookings.where((b) => b.status == 'pending').toList();
+
   // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
@@ -483,7 +489,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             color: Colors.grey.shade600,
-            onTap: () {},
+            badgeCount: _pendingBookingsCount,
+            onTap: () => _showNotificationsModal(context),
           ),
         ],
       ),
@@ -495,16 +502,304 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     required String title,
     required Color color,
     required VoidCallback onTap,
+    int badgeCount = 0,
   }) {
     return ListTile(
-      leading: Icon(icon, color: color),
+      leading: Stack(
+        children: [
+          Icon(icon, color: color),
+          if (badgeCount > 0)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 12,
+                  minHeight: 12,
+                ),
+                child: Text(
+                  badgeCount > 9 ? '9+' : badgeCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-      trailing: Icon(
-        Icons.arrow_forward_ios,
-        size: 14,
-        color: Colors.grey.shade400,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (badgeCount > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$badgeCount pending',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 14,
+            color: Colors.grey.shade400,
+          ),
+        ],
       ),
       onTap: onTap,
+    );
+  }
+
+  void _showNotificationsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final pending = _pendingBookings;
+          return DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            maxChildSize: 0.9,
+            minChildSize: 0.4,
+            expand: false,
+            builder: (context, scrollController) => Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Pending Approvals',
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      if (pending.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Text(
+                            '${pending.length} New',
+                            style: TextStyle(
+                              color: Colors.orange.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: pending.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.notifications_none,
+                                  size: 64, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No pending approvals',
+                                style: TextStyle(
+                                    color: Colors.grey.shade500, fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: pending.length,
+                          itemBuilder: (context, index) {
+                            final booking = pending[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                side: BorderSide(color: Colors.grey.shade100),
+                              ),
+                              elevation: 0,
+                              color: Colors.grey.shade50,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.shade50,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Icon(Icons.pending_actions,
+                                              color: Colors.orange.shade700),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                booking.vehicleName,
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16),
+                                              ),
+                                              Text(
+                                                'Requested by ${booking.renterName}',
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14),
+                                              ),
+                                              Text(
+                                                booking.renterEmail,
+                                                style: TextStyle(
+                                                    color: Colors.grey.shade600,
+                                                    fontSize: 12),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Booking ID: ${booking.id.substring(0, 8)}',
+                                                style: TextStyle(
+                                                    color: Colors.grey.shade500,
+                                                    fontSize: 11,
+                                                    fontStyle: FontStyle.italic),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Padding(
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12),
+                                      child: Divider(height: 1),
+                                    ),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today,
+                                            size: 14, color: Colors.grey),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          booking.dateRangeDisplay,
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          'NPR ${booking.totalPrice.toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: Colors.green),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: () async {
+                                              final success = await _bookingController
+                                                  .updateBookingStatus(
+                                                      booking.id, 'cancelled');
+                                              if (success) {
+                                                await _loadAnalytics();
+                                                if (context.mounted) {
+                                                  setModalState(() {});
+                                                }
+                                              }
+                                            },
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                              side: const BorderSide(
+                                                  color: Colors.red),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            child: const Text('Reject'),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () async {
+                                              final success = await _bookingController
+                                                  .updateBookingStatus(
+                                                      booking.id, 'confirmed');
+                                              if (success) {
+                                                await _loadAnalytics();
+                                                if (context.mounted) {
+                                                  setModalState(() {});
+                                                }
+                                              }
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                              foregroundColor: Colors.white,
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            child: const Text('Approve'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

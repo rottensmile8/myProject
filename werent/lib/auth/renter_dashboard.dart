@@ -4,6 +4,8 @@ import 'package:werent/models/booking_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
 import 'package:werent/controllers/booking_controller.dart';
 import 'package:werent/auth/browse_vehicles.dart';
+import 'package:werent/models/notification_model.dart';
+import 'package:werent/controllers/notification_controller.dart';
 
 class RenterDashboardPage extends StatefulWidget {
   final User user;
@@ -21,8 +23,10 @@ class RenterDashboardPage extends StatefulWidget {
 
 class _RenterDashboardPageState extends State<RenterDashboardPage> {
   final BookingController _bookingController = BookingController();
+  final NotificationController _notificationController = NotificationController();
 
   List<Booking> _bookings = [];
+  List<NotificationModel> _notifications = [];
   bool _analyticsLoading = true;
 
   @override
@@ -33,10 +37,14 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
 
   Future<void> _loadAnalytics() async {
     setState(() => _analyticsLoading = true);
-    final bookings = await _bookingController.getRenterBookings(widget.user.id);
+    final results = await Future.wait([
+      _bookingController.getRenterBookings(widget.user.id),
+      _notificationController.getNotifications(widget.user.id),
+    ]);
     if (mounted) {
       setState(() {
-        _bookings = bookings;
+        _bookings = results[0] as List<Booking>;
+        _notifications = results[1] as List<NotificationModel>;
         _analyticsLoading = false;
       });
     }
@@ -494,7 +502,8 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             color: Colors.grey.shade600,
-            onTap: () {},
+            badgeCount: _notificationController.unreadCount,
+            onTap: () => _showNotificationsModal(context),
           ),
           Divider(height: 1, color: Colors.grey.shade200),
           _buildMenuItem(
@@ -513,16 +522,249 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
     required String title,
     required Color color,
     required VoidCallback onTap,
+    int badgeCount = 0,
   }) {
     return ListTile(
-      leading: Icon(icon, color: color),
+      leading: Stack(
+        children: [
+          Icon(icon, color: color),
+          if (badgeCount > 0)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 12,
+                  minHeight: 12,
+                ),
+                child: Text(
+                  badgeCount > 9 ? '9+' : badgeCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-      trailing: Icon(
-        Icons.arrow_forward_ios,
-        size: 14,
-        color: Colors.grey.shade400,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (badgeCount > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$badgeCount new',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 14,
+            color: Colors.grey.shade400,
+          ),
+        ],
       ),
       onTap: onTap,
     );
+  }
+
+  void _showNotificationsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final notifications = _notifications;
+          return DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            maxChildSize: 0.9,
+            minChildSize: 0.4,
+            expand: false,
+            builder: (context, scrollController) => Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Notifications',
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      if (notifications.isNotEmpty)
+                        TextButton(
+                          onPressed: () async {
+                            final success = await _notificationController
+                                .clearAllNotifications(widget.user.id);
+                            if (success) {
+                              await _loadAnalytics();
+                              if (context.mounted) {
+                                setModalState(() {});
+                              }
+                            }
+                          },
+                          child: const Text('Clear All'),
+                        ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: notifications.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.notifications_none,
+                                  size: 64, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No new notifications',
+                                style: TextStyle(
+                                    color: Colors.grey.shade500, fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: notifications.length,
+                          itemBuilder: (context, index) {
+                            final notification = notifications[index];
+                            final isError = notification.type == 'error';
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                side: BorderSide(color: Colors.grey.shade100),
+                              ),
+                              elevation: 0,
+                              color: isError
+                                  ? Colors.red.shade50
+                                  : Colors.grey.shade50,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: isError
+                                                ? Colors.red.shade100
+                                                : Colors.blue.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Icon(
+                                            isError
+                                                ? Icons.error_outline
+                                                : Icons.check_circle_outline,
+                                            color: isError
+                                                ? Colors.red.shade700
+                                                : Colors.blue.shade700,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                notification.title,
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                notification.message,
+                                                style: TextStyle(
+                                                    color: Colors.grey.shade700,
+                                                    fontSize: 14),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close,
+                                              size: 18),
+                                          onPressed: () async {
+                                            final success =
+                                                await _notificationController
+                                                    .deleteNotification(
+                                                        notification.id);
+                                            if (success) {
+                                              await _loadAnalytics();
+                                              if (context.mounted) {
+                                                setModalState(() {});
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.bottomRight,
+                                      child: Text(
+                                        _formatDateTime(notification.createdAt),
+                                        style: TextStyle(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 11),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')} ${dt.day}/${dt.month}/${dt.year}";
   }
 }

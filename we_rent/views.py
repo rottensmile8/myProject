@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from pymongo import MongoClient
 from django.contrib.auth.hashers import make_password, check_password
-from db.mongodb import users_collection, vehicles_collection, bookings_collection
+from db.mongodb import users_collection, vehicles_collection, bookings_collection, notifications_collection
 import json
 from django.http import JsonResponse
 from bson import ObjectId
@@ -246,6 +246,7 @@ def vehicle_detail(request, vehicle_id):
 @api_view(['GET', 'POST'])
 def bookings(request):
     owner_id = request.query_params.get('owner_id')
+    renter_id = request.query_params.get('renter_id')
 
     if request.method == 'GET':
         try:
@@ -258,10 +259,12 @@ def bookings(request):
                 # Get bookings for these vehicles
                 bookings = list(bookings_collection.find(
                     {"vehicleId": {"$in": [str(v) for v in vehicle_ids]}}))
+            elif renter_id:
+                bookings = list(bookings_collection.find({"renterId": renter_id}))
             else:
                 bookings = list(bookings_collection.find())
 
-            # Convert ObjectId to string for each booking
+            # Convert ObjectId to string and attach vehicle image to each booking
             for booking in bookings:
                 booking['_id'] = str(booking['_id'])
                 if 'createdAt' in booking:
@@ -270,6 +273,17 @@ def bookings(request):
                     booking['startDate'] = booking['startDate'].isoformat()
                 if 'endDate' in booking:
                     booking['endDate'] = booking['endDate'].isoformat()
+                # Attach vehicle details
+                try:
+                    vehicle = vehicles_collection.find_one({"_id": ObjectId(booking.get('vehicleId', ''))})
+                    if vehicle:
+                        booking['vehicleImageBase64'] = vehicle.get('imageBase64')
+                        booking['vehicleName'] = vehicle.get('name')
+                        booking['vehicleCategory'] = vehicle.get('category')
+                    else:
+                        booking['vehicleImageBase64'] = None
+                except Exception:
+                    booking['vehicleImageBase64'] = None
 
             return Response(bookings)
         except Exception as e:
@@ -323,19 +337,41 @@ def bookings(request):
             return Response({"error": f"Server error: {str(e)}"}, status=500)
 
 
-@api_view(['PUT'])
+@api_view(['GET', 'PUT', 'DELETE'])
 def booking_detail(request, booking_id):
     try:
         booking = bookings_collection.find_one({"_id": ObjectId(booking_id)})
         if not booking:
             return Response({"error": "Booking not found"}, status=404)
 
-        if request.method == 'PUT':
+        if request.method == 'GET':
+            booking['_id'] = str(booking['_id'])
+            for field in ['createdAt', 'startDate', 'endDate']:
+                if field in booking and isinstance(booking[field], datetime):
+                    booking[field] = booking[field].isoformat()
+            return Response(booking)
+
+        elif request.method == 'PUT':
             data = request.data
             update_data = {}
 
             if 'status' in data:
-                update_data['status'] = data['status']
+                new_status = data['status']
+                update_data['status'] = new_status
+                
+                # Create notification for renter
+                try:
+                    if new_status in ['confirmed', 'cancelled']:
+                        notifications_collection.insert_one({
+                            "userId": booking['renterId'],
+                            "title": "Booking Update",
+                            "message": f"Your booking for {booking['vehicleName']} has been {new_status}.",
+                            "type": "success" if new_status == 'confirmed' else "error",
+                            "isRead": False,
+                            "createdAt": datetime.now()
+                        })
+                except Exception as e:
+                    print(f"Notification error: {str(e)}")
 
             if update_data:
                 bookings_collection.update_one(
@@ -346,13 +382,25 @@ def booking_detail(request, booking_id):
             booking = bookings_collection.find_one(
                 {"_id": ObjectId(booking_id)})
             booking['_id'] = str(booking['_id'])
-            if 'createdAt' in booking:
-                booking['createdAt'] = booking['createdAt'].isoformat()
-            if 'startDate' in booking:
-                booking['startDate'] = booking['startDate'].isoformat()
-            if 'endDate' in booking:
-                booking['endDate'] = booking['endDate'].isoformat()
+            for field in ['createdAt', 'startDate', 'endDate']:
+                if field in booking and isinstance(booking[field], datetime):
+                    booking[field] = booking[field].isoformat()
+            
+            # Attach latest vehicle details
+            try:
+                vehicle = vehicles_collection.find_one({"_id": ObjectId(booking.get('vehicleId', ''))})
+                if vehicle:
+                    booking['vehicleImageBase64'] = vehicle.get('imageBase64')
+                    booking['vehicleName'] = vehicle.get('name')
+                    booking['vehicleCategory'] = vehicle.get('category')
+            except Exception:
+                pass
+                
             return Response(booking)
+
+        elif request.method == 'DELETE':
+            bookings_collection.delete_one({"_id": ObjectId(booking_id)})
+            return Response({"message": "Booking deleted successfully"})
 
     except Exception as e:
         print(f"Booking detail error: {str(e)}")
@@ -383,3 +431,34 @@ def sync_users(request):
         return Response({"message": f"Successfully synced {synced_count} users to Django Admin."})
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+@api_view(['GET', 'DELETE'])
+def notifications(request):
+    user_id = request.query_params.get('user_id')
+    notification_id = request.query_params.get('notification_id')
+
+    if request.method == 'GET':
+        if not user_id:
+            return Response({"error": "user_id is required"}, status=400)
+        
+        try:
+            notifications = list(notifications_collection.find({"userId": user_id}).sort("createdAt", -1))
+            for n in notifications:
+                n['_id'] = str(n['_id'])
+                if 'createdAt' in n:
+                    n['createdAt'] = n['createdAt'].isoformat() if isinstance(n['createdAt'], datetime) else n['createdAt']
+            return Response(notifications)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+    elif request.method == 'DELETE':
+        try:
+            if notification_id:
+                notifications_collection.delete_one({"_id": ObjectId(notification_id)})
+                return Response({"message": "Notification deleted"})
+            elif user_id:
+                notifications_collection.delete_many({"userId": user_id})
+                return Response({"message": "All notifications cleared"})
+            return Response({"error": "notification_id or user_id required"}, status=400)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)

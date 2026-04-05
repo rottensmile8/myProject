@@ -3,6 +3,7 @@ class Booking {
   final String vehicleId;
   final String vehicleName;
   final String vehicleCategory;
+  final String? vehicleImageBase64;
   final String renterId;
   final String renterName;
   final String renterEmail;
@@ -17,6 +18,7 @@ class Booking {
     required this.vehicleId,
     required this.vehicleName,
     required this.vehicleCategory,
+    this.vehicleImageBase64,
     required this.renterId,
     required this.renterName,
     required this.renterEmail,
@@ -33,6 +35,7 @@ class Booking {
       vehicleId: json['vehicleId'] ?? '',
       vehicleName: json['vehicleName'] ?? '',
       vehicleCategory: json['vehicleCategory'] ?? '',
+      vehicleImageBase64: json['vehicleImageBase64'] as String?,
       renterId: json['renterId'] ?? '',
       renterName: json['renterName'] ?? '',
       renterEmail: json['renterEmail'] ?? '',
@@ -98,5 +101,28 @@ class Booking {
 
   int get rentalDays {
     return endDate.difference(startDate).inDays + 1;
+  }
+
+  bool get isOverdue {
+    final now = DateTime.now();
+    final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    return now.isAfter(endDateOnly);
+  }
+
+  bool get isCurrentlyRented {
+    if (status != 'confirmed') return false;
+    final now = DateTime.now();
+    // Normalize to dates
+    final startDateOnly = DateTime(startDate.year, startDate.month, startDate.day);
+    final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    return now.isAfter(startDateOnly.subtract(const Duration(seconds: 1))) && 
+           now.isBefore(endDateOnly);
+  }
+
+  int get daysRemaining {
+    final now = DateTime.now();
+    final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    if (now.isAfter(endDateOnly)) return 0;
+    return endDateOnly.difference(now).inDays + 1;
   }
 }

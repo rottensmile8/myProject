@@ -3,6 +3,7 @@ import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/booking_controller.dart';
 import 'package:werent/auth/browse_vehicles.dart';
+import 'package:werent/controllers/vehicle_controller.dart';
 
 class SavedVehiclesScreen extends StatefulWidget {
   final User? user;
@@ -15,8 +16,36 @@ class SavedVehiclesScreen extends StatefulWidget {
 
 class _SavedVehiclesScreenState extends State<SavedVehiclesScreen> {
   final BookingController _bookingController = BookingController();
+  final VehicleController _vehicleController = VehicleController();
 
-  List<Vehicle> get _savedVehicles => globalSavedVehicles;
+  List<Vehicle> _savedVehicles = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedVehicles();
+  }
+
+  Future<void> _loadSavedVehicles() async {
+    setState(() => _isLoading = true);
+    try {
+      // Fetch all vehicles and filter by saved IDs
+      final allVehicles = await _vehicleController.getOwnerVehicles('');
+      if (mounted) {
+        setState(() {
+          _savedVehicles = allVehicles
+              .where((v) => globalSavedVehicleIds.contains(v.id))
+              .toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   void _removeFromSaved(Vehicle vehicle) {
     setState(() {
@@ -369,16 +398,21 @@ class _SavedVehiclesScreenState extends State<SavedVehiclesScreen> {
             stops: const [0.0, 0.3],
           ),
         ),
-        child: _savedVehicles.isEmpty
-            ? _buildEmptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _savedVehicles.length,
-                itemBuilder: (context, index) {
-                  final vehicle = _savedVehicles[index];
-                  return _buildSavedVehicleCard(vehicle);
-                },
-              ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            : _savedVehicles.isEmpty
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    onRefresh: _loadSavedVehicles,
+                    child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _savedVehicles.length,
+                        itemBuilder: (context, index) {
+                          final vehicle = _savedVehicles[index];
+                          return _buildSavedVehicleCard(vehicle);
+                        },
+                      ),
+                  ),
       ),
     );
   }

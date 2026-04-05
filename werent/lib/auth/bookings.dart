@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:werent/models/booking_model.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/booking_controller.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class BookingsScreen extends StatefulWidget {
   final User user;
@@ -92,8 +94,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 child: CircularProgressIndicator(color: Colors.white),
               )
             : _bookings.isEmpty
-            ? _buildEmptyState()
-            : _buildBookingList(),
+                ? _buildEmptyState()
+                : _buildBookingList(),
       ),
     );
   }
@@ -106,7 +108,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           Icon(
             Icons.book_online_outlined,
             size: 80,
-            color: Colors.white.withOpacity(0.5),
+            color: const Color.fromRGBO(255, 255, 255, 0.5),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -123,7 +125,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.8),
+              color: const Color.fromRGBO(255, 255, 255, 0.8),
             ),
           ),
         ],
@@ -133,18 +135,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   Widget _buildBookingList() {
     // Group bookings by status
-    final pendingBookings = _bookings
-        .where((b) => b.status == 'pending')
-        .toList();
-    final confirmedBookings = _bookings
-        .where((b) => b.status == 'confirmed')
-        .toList();
-    final completedBookings = _bookings
-        .where((b) => b.status == 'completed')
-        .toList();
-    final cancelledBookings = _bookings
-        .where((b) => b.status == 'cancelled')
-        .toList();
+    final pendingBookings =
+        _bookings.where((b) => b.status == 'pending').toList();
+    final confirmedBookings =
+        _bookings.where((b) => b.status == 'confirmed').toList();
+    final completedBookings =
+        _bookings.where((b) => b.status == 'completed').toList();
+    final cancelledBookings =
+        _bookings.where((b) => b.status == 'cancelled').toList();
 
     return RefreshIndicator(
       onRefresh: _loadBookings,
@@ -189,7 +187,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: const Color.fromRGBO(255, 255, 255, 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -204,6 +202,31 @@ class _BookingsScreenState extends State<BookingsScreen> {
         ],
       ),
     );
+  }
+
+  Uint8List? _decodeBase64Image(String base64) {
+    try {
+      // Remove data URL prefix if present (data:image/...;base64,)
+      String base64String = base64;
+      if (base64.contains(',')) {
+        base64String = base64.split(',')[1];
+      }
+      return base64Decode(base64String);
+    } catch (e) {
+      debugPrint('Base64 decode error: $e');
+      return null;
+    }
+  }
+
+  String _getTimeRemaining(Booking booking) {
+    if (booking.isOverdue) return 'Overdue';
+    if (booking.isCurrentlyRented) {
+      final days = booking.daysRemaining;
+      return '$days day${days > 1 ? 's' : ''} left';
+    }
+    final daysToStart = booking.startDate.difference(DateTime.now()).inDays;
+    if (daysToStart > 0) return 'Starts in $daysToStart days';
+    return 'Starts today';
   }
 
   Widget _buildBookingCard(Booking booking) {
@@ -226,19 +249,31 @@ class _BookingsScreenState extends State<BookingsScreen> {
             child: Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     color: _getStatusColor(booking.status).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
+                    image: booking.vehicleImageBase64 != null
+                        ? _decodeBase64Image(booking.vehicleImageBase64!) !=
+                                null
+                            ? DecorationImage(
+                                image: MemoryImage(_decodeBase64Image(
+                                    booking.vehicleImageBase64!)!),
+                                fit: BoxFit.cover,
+                              )
+                            : null
+                        : null,
                   ),
-                  child: Icon(
-                    booking.vehicleCategory == 'bike'
-                        ? Icons.two_wheeler
-                        : Icons.directions_car,
-                    size: 28,
-                    color: _getStatusColor(booking.status),
-                  ),
+                  child: booking.vehicleImageBase64 == null
+                      ? Icon(
+                          booking.vehicleCategory == 'bike'
+                              ? Icons.two_wheeler
+                              : Icons.directions_car,
+                          size: 32,
+                          color: _getStatusColor(booking.status),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -342,6 +377,66 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     ),
                   ],
                 ),
+                if (_getTimeRemaining(booking).isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _getTimeRemaining(booking) == 'Overdue'
+                          ? Colors.red.shade50
+                          : Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _getTimeRemaining(booking) == 'Overdue'
+                            ? Colors.red.shade200
+                            : Colors.blue.shade200,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.timer_outlined,
+                          size: 16,
+                          color: _getTimeRemaining(booking) == 'Overdue'
+                              ? Colors.red.shade700
+                              : Colors.blue.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getTimeRemaining(booking),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: booking.isOverdue
+                                ? Colors.red.shade700
+                                : booking.isCurrentlyRented
+                                    ? Colors.green.shade700
+                                    : Colors.blue.shade700,
+                          ),
+                        ),
+                        if (booking.isCurrentlyRented) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade700,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'IN RENT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 // Total price
                 Container(

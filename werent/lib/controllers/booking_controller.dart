@@ -163,4 +163,34 @@ class BookingController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Delete a booking
+  Future<bool> deleteBooking(String bookingId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/bookings/$bookingId/'),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      if (response.statusCode == 200) {
+        _bookings.removeWhere((b) => b.id == bookingId);
+        notifyListeners();
+        return true;
+      } else {
+        final errorData = jsonDecode(response.body);
+        _error = errorData['error'] ?? 'Failed to delete booking';
+        throw Exception(_error);
+      }
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }
