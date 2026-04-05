@@ -76,7 +76,7 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rental History'),
-        backgroundColor: Colors.purple.shade700,
+        backgroundColor: const Color.fromARGB(255, 31, 162, 59),
         elevation: 0,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadBookings),
