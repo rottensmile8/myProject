@@ -209,7 +209,8 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Please read and accept the terms before booking ${vehicle.name}.',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 13),
                     ),
                     const SizedBox(height: 12),
                     Container(
@@ -569,9 +570,7 @@ By proceeding with this booking, you acknowledge that you have read, understood,
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                date != null
-                    ? '${date.day}/${date.month}/${date.year}'
-                    : label,
+                date != null ? '${date.day}/${date.month}/${date.year}' : label,
                 style: TextStyle(
                   color: date != null ? Colors.black87 : Colors.grey.shade500,
                   fontSize: 14,
@@ -711,8 +710,8 @@ By proceeding with this booking, you acknowledge that you have read, understood,
                                     Colors.green,
                                     Icons.check_circle_outline,
                                   ),
-                                  ...availableVehicles.map(
-                                      (v) => _buildVehicleCard(v)),
+                                  ...availableVehicles
+                                      .map((v) => _buildVehicleCard(v)),
                                 ],
                                 // Rented section
                                 if (rentedVehicles.isNotEmpty) ...[
@@ -722,8 +721,8 @@ By proceeding with this booking, you acknowledge that you have read, understood,
                                     Colors.red,
                                     Icons.lock_clock,
                                   ),
-                                  ...rentedVehicles.map(
-                                      (v) => _buildVehicleCard(v)),
+                                  ...rentedVehicles
+                                      .map((v) => _buildVehicleCard(v)),
                                 ],
                               ],
                             ),
@@ -857,9 +856,11 @@ By proceeding with this booking, you acknowledge that you have read, understood,
       ),
     );
   }
+
   Widget _buildVehicleCard(Vehicle vehicle) {
     final saved = _isSaved(vehicle.id);
-    final hasImage = vehicle.imageBase64 != null && vehicle.imageBase64!.isNotEmpty;
+    final imageBytes = Vehicle.safeDecodeImage(vehicle.imageBase64);
+    final hasImage = imageBytes != null;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 4,
@@ -872,13 +873,18 @@ By proceeding with this booking, you acknowledge that you have read, understood,
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.memory(
-                base64Decode(vehicle.imageBase64!),
-                height: 160,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildVehicleIconBanner(vehicle),
-              ),
+              child: Vehicle.safeDecodeImage(vehicle.imageBase64) != null
+                  ? Image.memory(
+                      Vehicle.safeDecodeImage(vehicle.imageBase64)!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint('🖼️ BrowseVehicles Image error: $error');
+                        return _buildImageErrorBanner(vehicle);
+                      },
+                    )
+                  : _buildImageErrorBanner(vehicle),
             )
           else
             _buildVehicleIconBanner(vehicle),
@@ -905,8 +911,7 @@ By proceeding with this booking, you acknowledge that you have read, understood,
                             Row(
                               children: [
                                 Icon(Icons.person_outline,
-                                    size: 13,
-                                    color: Colors.grey.shade500),
+                                    size: 13, color: Colors.grey.shade500),
                                 const SizedBox(width: 3),
                                 Text(
                                   vehicle.ownerName!,
@@ -928,7 +933,8 @@ By proceeding with this booking, you acknowledge that you have read, understood,
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    _buildInfoTag('NPR ${vehicle.pricePerDay.toStringAsFixed(0)}/day'),
+                    _buildInfoTag(
+                        'NPR ${vehicle.pricePerDay.toStringAsFixed(0)}/day'),
                     _buildInfoTag(vehicle.fuelTypeDisplay),
                     _buildInfoTag(vehicle.transmissionDisplay),
                   ],
@@ -977,9 +983,8 @@ By proceeding with this booking, you acknowledge that you have read, understood,
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: saved
-                            ? Colors.pink.shade50
-                            : Colors.grey.shade100,
+                        color:
+                            saved ? Colors.pink.shade50 : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: saved
@@ -1023,6 +1028,37 @@ By proceeding with this booking, you acknowledge that you have read, understood,
             : Icons.directions_car,
         color: Colors.blue.shade300,
         size: 52,
+      ),
+    );
+  }
+
+  Widget _buildImageErrorBanner(Vehicle vehicle) {
+    return Container(
+      height: 160,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border.all(color: Colors.red.shade300),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_not_supported, color: Colors.red.shade600, size: 48),
+          const SizedBox(height: 8),
+          Text(
+            'Image Error',
+            style: TextStyle(
+              color: Colors.red.shade700,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            '${vehicle.name} - Check console',
+            style: TextStyle(color: Colors.red.shade600, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

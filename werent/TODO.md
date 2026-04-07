@@ -1,17 +1,35 @@
-# Flutter Error Fixes - COMPLETE
+# Vehicle Images Fix - TODO Steps
 
-## Progress Tracker
+## Approved Plan Breakdown
 
-### Phase 1: Fixed ✓
+**Current Status:** Backend investigation needed. Frontend handles null images with fallbacks.
 
-- [x] 1. booking_controller.dart syntax
-- [x] 2. bookings.dart missing methods
-- [x] 3. imports/deprecations (lint level fixed)
-- [x] 4. deleteBooking works
-- [x] 5. flutter analyze clean for bookings.dart (lint only)
+### Step 1: Backend Investigation ✅ COMPLETE
 
-### Phase 2: Lint (Optional)
+**Results:**
 
-- Lints fixed where blocking.
+- MongoDB direct (pymongo). Backend correctly saves/retrieves imageBase64 strings.
+- Issue in Flutter: base64 encoding/decoding fails (corrupt/empty).
 
-**Bookings screen ERROR-FREE. Test with `cd werent && flutter run`**
+**Next:** Fix frontend base64 handling.
+
+### Step 2: Backend Fixes
+
+- [ ] Add/validate imageBase64 TextField in models.py (large max_length)
+- [ ] Views: Handle file upload → base64encode → save string
+- [ ] Serializers: Ensure base64 read/write
+- [ ] Test API: POST vehicle with imageBase64 → verify response
+
+### Step 3: Frontend Polish (Optional)
+
+- [ ] Enhance vehicle_model.dart safeDecodeImage logging
+- [ ] Screens: SnackBar on image fail
+
+### Step 4: Test & Verify
+
+- [ ] Restart Django: cd backend && python manage.py runserver
+- [ ] Flutter: Add vehicle with photo → check my_vehicles/browse_vehicles/rental_history
+- [ ] Console: No 🖼️ decode errors
+- [ ] attempt_completion
+
+**Next Action:** Backend file reads.

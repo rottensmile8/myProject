@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+
 enum VehicleCategory { car, bike }
 
 enum FuelType { petrol, diesel, electric, hybrid }
@@ -18,7 +22,7 @@ class Vehicle {
   final bool isAvailable;
   final DateTime createdAt;
   final String? imageBase64; // optional vehicle photo
-  final String? ownerName;  // populated when fetching all vehicles
+  final String? ownerName; // populated when fetching all vehicles
 
   Vehicle({
     required this.id,
@@ -122,4 +126,33 @@ class Vehicle {
       transmission == Transmission.automatic ? 'Automatic' : 'Manual';
 
   String get pricePerDayNPR => 'NPR ${pricePerDay.toStringAsFixed(0)}/day';
+
+  /// Safely decodes base64 image data for display.
+  /// - Strips data URL prefix if present
+  /// - Validates and logs decode errors
+  /// - Returns null + debug print if invalid
+  static Uint8List? safeDecodeImage(String? base64Str) {
+    if (base64Str == null || base64Str.isEmpty) {
+      debugPrint('Vehicle imageBase64 is empty');
+      return null;
+    }
+
+    try {
+      // Strip data URL prefix (data:image/...;base64,)
+      String cleanBase64 = base64Str;
+      if (base64Str.contains(',')) {
+        cleanBase64 = base64Str.split(',')[1];
+      }
+
+      debugPrint('Decoding image (length: ${cleanBase64.length})');
+      final bytes = base64Decode(cleanBase64);
+      debugPrint('Image decoded successfully (${bytes.length} bytes)');
+      return bytes;
+    } catch (e) {
+      debugPrint('Image decode ERROR: $e');
+      debugPrint(
+          'Base64 preview (first 50): ${base64Str.length > 50 ? base64Str.substring(0, 50) : base64Str}...');
+      return null;
+    }
+  }
 }

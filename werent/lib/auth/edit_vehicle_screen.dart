@@ -36,8 +36,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   late Transmission _selectedTransmission;
 
   // Image state — null means use existing from vehicle
-  File? _newImageFile;      // newly picked image
-  String? _imageBase64;     // current base64 (existing or new)
+  File? _newImageFile; // newly picked image
+  String? _imageBase64; // current base64 (existing or new)
   bool _imageRemoved = false;
   bool _isPickingImage = false;
   bool _isLoading = false;
@@ -49,7 +49,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     _nameController = TextEditingController(text: v.name);
     _brandController = TextEditingController(text: v.brand);
     _modelYearController = TextEditingController(text: v.modelYear.toString());
-    _priceController = TextEditingController(text: v.pricePerDay.toStringAsFixed(0));
+    _priceController =
+        TextEditingController(text: v.pricePerDay.toStringAsFixed(0));
     _pickupLocationController = TextEditingController(text: v.pickupLocation);
     _selectedCategory = v.category;
     _selectedFuelType = v.fuelType;
@@ -72,9 +73,9 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        maxWidth: 1024,
-        maxHeight: 768,
-        imageQuality: 75,
+        maxWidth: 800,
+        maxHeight: 600,
+        imageQuality: 85,
       );
       if (image != null) {
         final bytes = await image.readAsBytes();
@@ -87,7 +88,9 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Error picking image: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -185,7 +188,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
             child: Icon(icon, color: color, size: 30),
           ),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+          Text(label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -478,7 +482,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.green.shade700 : Colors.grey.shade600,
+                color:
+                    isSelected ? Colors.green.shade700 : Colors.grey.shade600,
               ),
             ),
           ],
@@ -499,7 +504,6 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
             const Text('Vehicle Details',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _nameController,
               decoration: _inputDecoration('Vehicle Name', Icons.label),
@@ -508,48 +512,50 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                   : null,
             ),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _brandController,
               decoration: _inputDecoration('Brand', Icons.business),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Please enter brand'
-                  : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Please enter brand' : null,
             ),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _modelYearController,
               decoration: _inputDecoration('Model Year', Icons.calendar_today),
               keyboardType: TextInputType.number,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Please enter model year';
+                if (v == null || v.trim().isEmpty)
+                  return 'Please enter model year';
                 final year = int.tryParse(v.trim());
-                if (year == null || year < 1900 || year > DateTime.now().year + 1) {
+                if (year == null ||
+                    year < 1900 ||
+                    year > DateTime.now().year + 1) {
                   return 'Please enter a valid year';
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _priceController,
-              decoration: _inputDecoration('Price per Day (NPR)', Icons.attach_money),
+              decoration:
+                  _inputDecoration('Price per Day (NPR)', Icons.attach_money),
               keyboardType: TextInputType.number,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Please enter price per day';
+                if (v == null || v.trim().isEmpty)
+                  return 'Please enter price per day';
                 final price = double.tryParse(v.trim());
-                if (price == null || price <= 0) return 'Please enter a valid price';
+                if (price == null || price <= 0)
+                  return 'Please enter a valid price';
                 return null;
               },
             ),
             const SizedBox(height: 16),
-
             if (_selectedCategory == VehicleCategory.car) ...[
               DropdownButtonFormField<FuelType>(
                 initialValue: _selectedFuelType,
-                decoration: _inputDecoration('Fuel Type', Icons.local_gas_station),
+                decoration:
+                    _inputDecoration('Fuel Type', Icons.local_gas_station),
                 items: FuelType.values.map((fuel) {
                   return DropdownMenuItem(
                     value: fuel,
@@ -561,14 +567,15 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 },
               ),
               const SizedBox(height: 16),
-
               DropdownButtonFormField<Transmission>(
                 initialValue: _selectedTransmission,
                 decoration: _inputDecoration('Transmission', Icons.settings),
                 items: Transmission.values.map((trans) {
                   return DropdownMenuItem(
                     value: trans,
-                    child: Text(trans == Transmission.automatic ? 'Automatic' : 'Manual'),
+                    child: Text(trans == Transmission.automatic
+                        ? 'Automatic'
+                        : 'Manual'),
                   );
                 }).toList(),
                 onChanged: (v) {
@@ -577,10 +584,10 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
               ),
               const SizedBox(height: 16),
             ],
-
             TextFormField(
               controller: _pickupLocationController,
-              decoration: _inputDecoration('Pickup Location', Icons.location_on),
+              decoration:
+                  _inputDecoration('Pickup Location', Icons.location_on),
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Please enter pickup location'
                   : null,
@@ -631,8 +638,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green.shade700,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: _isLoading
             ? const CircularProgressIndicator(color: Colors.white)

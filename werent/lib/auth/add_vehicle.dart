@@ -54,9 +54,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        maxWidth: 1024,
-        maxHeight: 768,
-        imageQuality: 75,
+        maxWidth: 800,
+        maxHeight: 600,
+        imageQuality: 85,
       );
       if (image != null) {
         final bytes = await image.readAsBytes();
@@ -68,7 +68,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Error picking image: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -165,7 +167,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             child: Icon(icon, color: color, size: 30),
           ),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+          Text(label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -344,11 +347,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.edit, color: Colors.white, size: 14),
+                                        Icon(Icons.edit,
+                                            color: Colors.white, size: 14),
                                         SizedBox(width: 4),
                                         Text('Change',
                                             style: TextStyle(
-                                                color: Colors.white, fontSize: 12)),
+                                                color: Colors.white,
+                                                fontSize: 12)),
                                       ],
                                     ),
                                   ),
@@ -461,9 +466,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected
-                    ? Colors.green.shade700
-                    : Colors.grey.shade600,
+                color:
+                    isSelected ? Colors.green.shade700 : Colors.grey.shade600,
               ),
             ),
           ],

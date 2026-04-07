@@ -5,6 +5,8 @@ import 'package:werent/controllers/booking_controller.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:werent/models/vehicle_model.dart';
+
 class RentalHistoryScreen extends StatefulWidget {
   final User user;
 
@@ -60,15 +62,12 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
   }
 
   Uint8List? _decodeBase64Image(String base64) {
-    try {
-      String base64String = base64;
-      if (base64.contains(',')) {
-        base64String = base64.split(',')[1];
-      }
-      return base64Decode(base64String);
-    } catch (e) {
-      return null;
+    final bytes = Vehicle.safeDecodeImage(base64);
+    if (bytes == null) {
+      debugPrint(
+          '🖼️ RentalHistory decode failed for booking: $base64.substring(0, 50)....');
     }
+    return bytes;
   }
 
   @override
@@ -76,7 +75,7 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rental History'),
-        backgroundColor: Colors.purple.shade700,
+        backgroundColor: const Color.fromARGB(255, 31, 162, 59),
         elevation: 0,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadBookings),
@@ -87,7 +86,10 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [const Color.fromARGB(255, 31, 162, 59), Colors.purple.shade50],
+            colors: [
+              const Color.fromARGB(255, 31, 162, 59),
+              Colors.purple.shade50
+            ],
             stops: const [0.0, 0.3],
           ),
         ),
@@ -228,15 +230,19 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     image: booking.vehicleImageBase64 != null
-                        ? _decodeBase64Image(booking.vehicleImageBase64!) != null
+                        ? _decodeBase64Image(booking.vehicleImageBase64!) !=
+                                null
                             ? DecorationImage(
-                                image: MemoryImage(_decodeBase64Image(booking.vehicleImageBase64!)!),
+                                image: MemoryImage(_decodeBase64Image(
+                                    booking.vehicleImageBase64!)!),
                                 fit: BoxFit.cover,
                               )
                             : null
                         : null,
                   ),
-                  child: (booking.vehicleImageBase64 == null || _decodeBase64Image(booking.vehicleImageBase64!) == null)
+                  child: (booking.vehicleImageBase64 == null ||
+                          _decodeBase64Image(booking.vehicleImageBase64!) ==
+                              null)
                       ? Icon(
                           booking.vehicleCategory == 'bike'
                               ? Icons.two_wheeler
@@ -306,7 +312,8 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
                     if (booking.isCurrentlyRented) ...[
                       const SizedBox(width: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.green.shade600,
                           borderRadius: BorderRadius.circular(12),
@@ -314,7 +321,8 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.timer_outlined, size: 10, color: Colors.white),
+                            const Icon(Icons.timer_outlined,
+                                size: 10, color: Colors.white),
                             const SizedBox(width: 4),
                             const Text(
                               'In Rent',
@@ -333,7 +341,8 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
                 if (booking.isCurrentlyRented) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -341,7 +350,8 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, size: 14, color: Colors.green.shade700),
+                        Icon(Icons.info_outline,
+                            size: 14, color: Colors.green.shade700),
                         const SizedBox(width: 8),
                         Text(
                           '${booking.daysRemaining} days remaining in your rental',
@@ -384,7 +394,9 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
             ),
           ),
           // Action buttons
-          if (booking.status == 'completed' || booking.status == 'cancelled' || booking.isOverdue)
+          if (booking.status == 'completed' ||
+              booking.status == 'cancelled' ||
+              booking.isOverdue)
             Padding(
               padding: const EdgeInsets.only(right: 16, bottom: 8),
               child: Row(

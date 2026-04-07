@@ -4,6 +4,7 @@ import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/vehicle_controller.dart';
 import 'package:werent/auth/edit_vehicle_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class MyVehiclesScreen extends StatefulWidget {
   final User user;
@@ -127,8 +128,8 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                 child: CircularProgressIndicator(color: Colors.white),
               )
             : _vehicles.isEmpty
-            ? _buildEmptyState()
-            : _buildVehicleList(),
+                ? _buildEmptyState()
+                : _buildVehicleList(),
       ),
     );
   }
@@ -245,30 +246,35 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   }
 
   Widget _buildVehicleCard(Vehicle vehicle) {
-    final hasImage =
-        vehicle.imageBase64 != null && vehicle.imageBase64!.isNotEmpty;
+    final imageBytes = Vehicle.safeDecodeImage(vehicle.imageBase64);
+    final hasImage = imageBytes != null;
+
+    Widget? imageHeader;
+    if (hasImage) {
+      imageHeader = ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        child: Image.memory(
+          imageBytes!,
+          height: 150,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('🖼️ MyVehicles Image error: $error');
+            return _buildAssetOrIconHeader(vehicle);
+          },
+        ),
+      );
+    } else {
+      imageHeader = _buildAssetOrIconHeader(vehicle);
+    }
+
     return Card(
       elevation: 4,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
-          // Vehicle photo or fallback header
-          if (hasImage)
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.memory(
-                base64Decode(vehicle.imageBase64!),
-                height: 150,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    _buildIconHeader(vehicle),
-              ),
-            )
-          else
-            _buildIconHeader(vehicle),
+          imageHeader,
           // Name, brand, year + availability
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -294,8 +300,8 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: vehicle.isAvailable
                         ? Colors.green.shade100
@@ -422,21 +428,30 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
     );
   }
 
-  Widget _buildIconHeader(Vehicle vehicle) {
-    return Container(
-      height: 90,
+  Widget _buildAssetOrIconHeader(Vehicle vehicle) {
+    final assetPath = vehicle.category == VehicleCategory.bike
+        ? 'assets/images/bike.svg'
+        : 'assets/images/car.svg';
+
+    return SvgPicture.asset(
+      assetPath,
+      height: 150,
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Icon(
-        vehicle.category == VehicleCategory.bike
-            ? Icons.two_wheeler
-            : Icons.directions_car,
-        size: 40,
-        color: Colors.green.shade400,
+      fit: BoxFit.cover,
+      placeholderBuilder: (context) => Container(
+        height: 150,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Icon(
+          vehicle.category == VehicleCategory.bike
+              ? Icons.two_wheeler
+              : Icons.directions_car,
+          size: 40,
+          color: Colors.green.shade400,
+        ),
       ),
     );
   }
