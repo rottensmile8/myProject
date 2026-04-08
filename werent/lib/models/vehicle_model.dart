@@ -129,29 +129,51 @@ class Vehicle {
 
   /// Safely decodes base64 image data for display.
   /// - Strips data URL prefix if present
-  /// - Validates and logs decode errors
-  /// - Returns null + debug print if invalid
+  /// - Validates size (<2MB), MIME type
+  /// - Comprehensive error logging
   static Uint8List? safeDecodeImage(String? base64Str) {
     if (base64Str == null || base64Str.isEmpty) {
-      debugPrint('Vehicle imageBase64 is empty');
+      debugPrint('❌ Vehicle imageBase64 is empty/null');
       return null;
     }
 
     try {
       // Strip data URL prefix (data:image/...;base64,)
       String cleanBase64 = base64Str;
+      String? mimeType;
       if (base64Str.contains(',')) {
-        cleanBase64 = base64Str.split(',')[1];
+        final parts = base64Str.split(',');
+        if (parts.length > 1) {
+          final header = parts[0];
+          mimeType = header.split(':')[1].split(';')[0];
+          cleanBase64 = parts[1];
+        }
       }
 
-      debugPrint('Decoding image (length: ${cleanBase64.length})');
+      debugPrint(
+          '🔍 Decoding image: ${mimeType ?? 'unknown'} (base64 len: ${cleanBase64.length})');
+
       final bytes = base64Decode(cleanBase64);
-      debugPrint('Image decoded successfully (${bytes.length} bytes)');
+
+      // Size validation (<2MB)
+      if (bytes.length > 2 * 1024 * 1024) {
+        debugPrint('⚠️ Image too large: ${bytes.length} bytes (>2MB limit)');
+        return null;
+      }
+
+      // Basic MIME validation
+      if (mimeType != null && !mimeType.startsWith('image/')) {
+        debugPrint('❌ Invalid MIME type: $mimeType');
+        return null;
+      }
+
+      debugPrint(
+          '✅ Image decoded: ${bytes.length} bytes (${mimeType ?? 'unknown'})');
       return bytes;
     } catch (e) {
-      debugPrint('Image decode ERROR: $e');
+      debugPrint('❌ Base64 decode FAILED: $e');
       debugPrint(
-          'Base64 preview (first 50): ${base64Str.length > 50 ? base64Str.substring(0, 50) : base64Str}...');
+          '📄 Base64 preview: ${base64Str.length > 100 ? base64Str.substring(0, 100) + '...' : base64Str}');
       return null;
     }
   }

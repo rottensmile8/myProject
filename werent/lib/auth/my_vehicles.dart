@@ -433,25 +433,44 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
         ? 'assets/images/bike.svg'
         : 'assets/images/car.svg';
 
-    return SvgPicture.asset(
-      assetPath,
-      height: 150,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      placeholderBuilder: (context) => Container(
+    debugPrint('🔍 Loading asset header: $assetPath for ${vehicle.name}');
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: Image.asset(
+        assetPath,
         height: 150,
         width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        child: Icon(
-          vehicle.category == VehicleCategory.bike
-              ? Icons.two_wheeler
-              : Icons.directions_car,
-          size: 40,
-          color: Colors.green.shade400,
-        ),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('🖼️ Asset Image failed ($assetPath): $error');
+          // Fallback to SVG
+          return SvgPicture.asset(
+            assetPath,
+            height: 150,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            placeholderBuilder: (context) {
+              debugPrint('⚠️ SVG also failed for $assetPath - using icon');
+              return Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Icon(
+                  vehicle.category == VehicleCategory.bike
+                      ? Icons.two_wheeler
+                      : Icons.directions_car,
+                  size: 40,
+                  color: Colors.green.shade400,
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

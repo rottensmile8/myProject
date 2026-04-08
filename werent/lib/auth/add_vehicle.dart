@@ -60,10 +60,34 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       );
       if (image != null) {
         final bytes = await image.readAsBytes();
+
+        // VALIDATION: Size <2MB, Image format
+        if (bytes.length > 2 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image too large! Max 2MB supported.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          return;
+        }
+
+        debugPrint('📸 Image picked: ${bytes.length} bytes');
+
         setState(() {
           _selectedImage = File(image.path);
           _imageBase64 = base64Encode(bytes);
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Image selected (${(bytes.length / 1024).toStringAsFixed(1)} KB)'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {

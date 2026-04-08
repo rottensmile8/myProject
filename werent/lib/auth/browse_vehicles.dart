@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/vehicle_controller.dart';
@@ -1015,19 +1016,47 @@ By proceeding with this booking, you acknowledge that you have read, understood,
   }
 
   Widget _buildVehicleIconBanner(Vehicle vehicle) {
-    return Container(
-      height: 90,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Icon(
-        vehicle.category == VehicleCategory.bike
-            ? Icons.two_wheeler
-            : Icons.directions_car,
-        color: Colors.blue.shade300,
-        size: 52,
+    final assetPath = vehicle.category == VehicleCategory.bike
+        ? 'assets/images/bike.svg'
+        : 'assets/images/car.svg';
+
+    debugPrint('🔍 BrowseVehicles: Loading asset banner $assetPath');
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: Image.asset(
+        assetPath,
+        height: 160,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('🖼️ Browse Asset failed ($assetPath): $error');
+          return SvgPicture.asset(
+            assetPath,
+            height: 160,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            placeholderBuilder: (context) {
+              debugPrint('⚠️ Browse SVG failed - using icon: $assetPath');
+              return Container(
+                height: 160,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Icon(
+                  vehicle.category == VehicleCategory.bike
+                      ? Icons.two_wheeler
+                      : Icons.directions_car,
+                  color: Colors.blue.shade300,
+                  size: 52,
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
