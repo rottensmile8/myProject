@@ -540,7 +540,7 @@ By proceeding with this booking, you acknowledge that you have read, understood,
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Confirm Booking'),
+                  child: const Text('Proceed to Payment'),
                 ),
               ],
             );
@@ -1037,7 +1037,7 @@ By proceeding with this booking, you acknowledge that you have read, understood,
             width: double.infinity,
             fit: BoxFit.cover,
             placeholderBuilder: (context) {
-              debugPrint('⚠️ Browse SVG failed - using icon: $assetPath');
+              debugPrint('Browse SVG failed - using icon: $assetPath');
               return Container(
                 height: 160,
                 width: double.infinity,
