@@ -76,6 +76,17 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  // Check if renter has active rental
+  Future<bool> hasActiveRental(String renterId) async {
+    try {
+      final bookings = await getRenterBookings(renterId);
+      return bookings.any((b) => b.status == 'confirmed');
+    } catch (e) {
+      print('Error checking active rental: $e');
+      return false;
+    }
+  }
+
   // Create a new booking
   Future<Booking?> createBooking({
     required String vehicleId,

@@ -102,7 +102,7 @@ def login_user(request):
                 isActive=True  # Existing users are active by default
             )
             is_active = True
-        
+
         # SYNC: Update MongoDB with the current isActive status from SQL
         users_collection.update_one(
             {"email": email},
@@ -145,8 +145,10 @@ def vehicles(request):
                         vehicle['createdAt'], datetime) else vehicle['createdAt']
                 # Attach owner's name
                 try:
-                    owner = users_collection.find_one({"_id": ObjectId(vehicle.get('ownerId', ''))}) if vehicle.get('ownerId') else None
-                    vehicle['ownerName'] = owner.get('fullName', 'Unknown') if owner else 'Unknown'
+                    owner = users_collection.find_one({"_id": ObjectId(
+                        vehicle.get('ownerId', ''))}) if vehicle.get('ownerId') else None
+                    vehicle['ownerName'] = owner.get(
+                        'fullName', 'Unknown') if owner else 'Unknown'
                 except Exception:
                     vehicle['ownerName'] = 'Unknown'
 
@@ -260,7 +262,8 @@ def bookings(request):
                 bookings = list(bookings_collection.find(
                     {"vehicleId": {"$in": [str(v) for v in vehicle_ids]}}))
             elif renter_id:
-                bookings = list(bookings_collection.find({"renterId": renter_id}))
+                bookings = list(bookings_collection.find(
+                    {"renterId": renter_id}))
             else:
                 bookings = list(bookings_collection.find())
 
@@ -275,9 +278,11 @@ def bookings(request):
                     booking['endDate'] = booking['endDate'].isoformat()
                 # Attach vehicle details
                 try:
-                    vehicle = vehicles_collection.find_one({"_id": ObjectId(booking.get('vehicleId', ''))})
+                    vehicle = vehicles_collection.find_one(
+                        {"_id": ObjectId(booking.get('vehicleId', ''))})
                     if vehicle:
-                        booking['vehicleImageBase64'] = vehicle.get('imageBase64')
+                        booking['vehicleImageBase64'] = vehicle.get(
+                            'imageBase64')
                         booking['vehicleName'] = vehicle.get('name')
                         booking['vehicleCategory'] = vehicle.get('category')
                     else:
@@ -307,6 +312,14 @@ def bookings(request):
                 {"_id": ObjectId(vehicle_id)})
             if not vehicle:
                 return Response({"error": "Vehicle not found"}, status=404)
+
+            # Check if renter has existing active rental
+            existing_active = bookings_collection.find_one({
+                "renterId": renter_id,
+                "status": "confirmed"
+            })
+            if existing_active:
+                return Response({"error": "You already have an active rental. Please complete or cancel your current rental first."}, status=400)
 
             # Get renter details
             renter = users_collection.find_one({"_id": ObjectId(renter_id)})
@@ -358,7 +371,22 @@ def booking_detail(request, booking_id):
             if 'status' in data:
                 new_status = data['status']
                 update_data['status'] = new_status
-                
+
+                # Update vehicle availability
+                vehicle_doc = vehicles_collection.find_one(
+                    {"_id": ObjectId(booking['vehicleId'])})
+                if vehicle_doc:
+                    if new_status == 'confirmed':
+                        vehicles_collection.update_one(
+                            {"_id": ObjectId(booking['vehicleId'])},
+                            {"$set": {"isAvailable": False}}
+                        )
+                    elif new_status in ['completed', 'cancelled']:
+                        vehicles_collection.update_one(
+                            {"_id": ObjectId(booking['vehicleId'])},
+                            {"$set": {"isAvailable": True}}
+                        )
+
                 # Create notification for renter
                 try:
                     if new_status in ['confirmed', 'cancelled']:
@@ -385,17 +413,18 @@ def booking_detail(request, booking_id):
             for field in ['createdAt', 'startDate', 'endDate']:
                 if field in booking and isinstance(booking[field], datetime):
                     booking[field] = booking[field].isoformat()
-            
+
             # Attach latest vehicle details
             try:
-                vehicle = vehicles_collection.find_one({"_id": ObjectId(booking.get('vehicleId', ''))})
+                vehicle = vehicles_collection.find_one(
+                    {"_id": ObjectId(booking.get('vehicleId', ''))})
                 if vehicle:
                     booking['vehicleImageBase64'] = vehicle.get('imageBase64')
                     booking['vehicleName'] = vehicle.get('name')
                     booking['vehicleCategory'] = vehicle.get('category')
             except Exception:
                 pass
-                
+
             return Response(booking)
 
         elif request.method == 'DELETE':
@@ -405,6 +434,8 @@ def booking_detail(request, booking_id):
     except Exception as e:
         print(f"Booking detail error: {str(e)}")
         return Response({"error": f"Server error: {str(e)}"}, status=500)
+
+
 @api_view(['GET'])
 def sync_users(request):
     """Temporary view to sync all MongoDB users to the Django Admin panel"""
@@ -420,7 +451,7 @@ def sync_users(request):
                     role=m_user.get('role', 'renter'),
                     isActive=True  # Existing users are set to active
                 )
-            
+
             # Ensure isActive exists in MongoDB
             if 'isActive' not in m_user:
                 users_collection.update_one(
@@ -432,6 +463,7 @@ def sync_users(request):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+
 @api_view(['GET', 'DELETE'])
 def notifications(request):
     user_id = request.query_params.get('user_id')
@@ -440,13 +472,15 @@ def notifications(request):
     if request.method == 'GET':
         if not user_id:
             return Response({"error": "user_id is required"}, status=400)
-        
+
         try:
-            notifications = list(notifications_collection.find({"userId": user_id}).sort("createdAt", -1))
+            notifications = list(notifications_collection.find(
+                {"userId": user_id}).sort("createdAt", -1))
             for n in notifications:
                 n['_id'] = str(n['_id'])
                 if 'createdAt' in n:
-                    n['createdAt'] = n['createdAt'].isoformat() if isinstance(n['createdAt'], datetime) else n['createdAt']
+                    n['createdAt'] = n['createdAt'].isoformat() if isinstance(
+                        n['createdAt'], datetime) else n['createdAt']
             return Response(notifications)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
@@ -454,7 +488,8 @@ def notifications(request):
     elif request.method == 'DELETE':
         try:
             if notification_id:
-                notifications_collection.delete_one({"_id": ObjectId(notification_id)})
+                notifications_collection.delete_one(
+                    {"_id": ObjectId(notification_id)})
                 return Response({"message": "Notification deleted"})
             elif user_id:
                 notifications_collection.delete_many({"userId": user_id})

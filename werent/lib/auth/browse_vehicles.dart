@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:url_launcher/url_launcher.dart' show canLaunchUrl, LaunchMode, launchUrl;
+import 'package:url_launcher/url_launcher.dart'
+    show canLaunchUrl, LaunchMode, launchUrl;
 import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/vehicle_controller.dart';
@@ -150,6 +151,13 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
     // Check if user is approved
     if (!widget.user!.isActive) {
       _showApprovalRequiredDialog(context);
+      return;
+    }
+
+    // Check if renter has active rental
+    final hasActive = await _bookingController.hasActiveRental(widget.user!.id);
+    if (hasActive) {
+      _showActiveRentalDialog(context);
       return;
     }
 
@@ -331,6 +339,46 @@ This agreement is governed by the laws of Nepal. Any disputes shall be settled u
 
 By proceeding with this booking, you acknowledge that you have read, understood, and agree to all the terms and conditions stated above.
 ''';
+  }
+
+  Future<void> _showActiveRentalDialog(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.block, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Active Rental Detected'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('You already have an active vehicle rental.'),
+            SizedBox(height: 12),
+            Text(
+                'Please complete or return your current rental first. You can save vehicles for later booking.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+
+
+          ElevatedButton.icon(
+            onPressed: () =>
+                Navigator.pushNamed(context, '/renter/saved-vehicles'),
+            icon: const Icon(Icons.favorite),
+            label: const Text('View Saved Vehicles'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 234, 138, 21)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showDatePickerDialog(Vehicle vehicle) async {
@@ -588,80 +636,79 @@ By proceeding with this booking, you acknowledge that you have read, understood,
   }
 
   Future<void> _confirmBooking({
-  required Vehicle vehicle,
-  required DateTime startDate,
-  required DateTime endDate,
-  required double totalPrice,
-}) async {
+    required Vehicle vehicle,
+    required DateTime startDate,
+    required DateTime endDate,
+    required double totalPrice,
+  }) async {
+    final user = widget.user!;
+    final int khaltiAmount = (totalPrice * 100).toInt(); // NPR → paisa
 
-  final user = widget.user!;
-  final int khaltiAmount = (totalPrice * 100).toInt(); // NPR → paisa
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Redirecting to Khalti payment...'),
-    ),
-  );
-
-  // 1. INITIATE PAYMENT
-  final paymentUrl = await KhaltiService.createPayment(
-    amount: khaltiAmount,
-    orderId: "WR-${DateTime.now().millisecondsSinceEpoch}",
-    orderName: vehicle.name,
-  );
-
-  if (paymentUrl == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Payment initiation failed'),
-        backgroundColor: Colors.red,
+        content: Text('Redirecting to Khalti payment...'),
       ),
     );
-    return;
-  }
 
-  // 2. OPEN KHALTI PAYMENT PAGE
-  final uri = Uri.parse(paymentUrl);
+    // 1. INITIATE PAYMENT
+    final paymentUrl = await KhaltiService.createPayment(
+      amount: khaltiAmount,
+      orderId: "WR-${DateTime.now().millisecondsSinceEpoch}",
+      orderName: vehicle.name,
+    );
 
-  if (!await canLaunchUrl(uri)) {
+    if (paymentUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment initiation failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // 2. OPEN KHALTI PAYMENT PAGE
+    final uri = Uri.parse(paymentUrl);
+
+    if (!await canLaunchUrl(uri)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot open payment page'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    // 3. AFTER PAYMENT → SAVE BOOKING (simple flow)
+    final booking = await _bookingController.createBooking(
+      vehicleId: vehicle.id,
+      vehicleName: vehicle.name,
+      vehicleCategory:
+          vehicle.category == VehicleCategory.bike ? 'bike' : 'car',
+      renterId: user.id,
+      renterName: user.fullName,
+      renterEmail: user.email,
+      startDate: startDate,
+      endDate: endDate,
+      totalPrice: totalPrice,
+    );
+
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cannot open payment page'),
-        backgroundColor: Colors.red,
+      SnackBar(
+        content: Text(
+          booking != null
+              ? 'Booking confirmed after payment!'
+              : 'Booking failed after payment',
+        ),
+        backgroundColor: booking != null ? Colors.green : Colors.red,
       ),
     );
-    return;
   }
-
-  await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-  // 3. AFTER PAYMENT → SAVE BOOKING (simple flow)
-  final booking = await _bookingController.createBooking(
-    vehicleId: vehicle.id,
-    vehicleName: vehicle.name,
-    vehicleCategory:
-        vehicle.category == VehicleCategory.bike ? 'bike' : 'car',
-    renterId: user.id,
-    renterName: user.fullName,
-    renterEmail: user.email,
-    startDate: startDate,
-    endDate: endDate,
-    totalPrice: totalPrice,
-  );
-
-  if (!mounted) return;
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        booking != null
-            ? 'Booking confirmed after payment!'
-            : 'Booking failed after payment',
-      ),
-      backgroundColor: booking != null ? Colors.green : Colors.red,
-    ),
-  );
-}
 
   @override
   Widget build(BuildContext context) {

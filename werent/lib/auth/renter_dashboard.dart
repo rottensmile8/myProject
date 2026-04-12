@@ -23,7 +23,8 @@ class RenterDashboardPage extends StatefulWidget {
 
 class _RenterDashboardPageState extends State<RenterDashboardPage> {
   final BookingController _bookingController = BookingController();
-  final NotificationController _notificationController = NotificationController();
+  final NotificationController _notificationController =
+      NotificationController();
 
   List<Booking> _bookings = [];
   List<NotificationModel> _notifications = [];
@@ -57,6 +58,8 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
   double get _totalSpent => _bookings
       .where((b) => b.status == 'confirmed' || b.status == 'completed')
       .fold(0.0, (sum, b) => sum + b.totalPrice);
+
+  bool get hasActiveRental => _bookings.any((b) => b.status == 'confirmed');
 
   int get _savedVehiclesCount => globalSavedVehicles.length;
 
@@ -286,8 +289,8 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
                   children: [
                     const Text(
                       'Your Analytics',
-                      style: TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     IconButton(
                       icon: const Icon(Icons.refresh),
@@ -385,12 +388,18 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
           ),
         ),
         _buildActionCard(
-          icon: Icons.search,
-          title: 'Browse Vehicles',
-          subtitle: 'Find your perfect vehicle',
+          icon: hasActiveRental ? Icons.block : Icons.search,
+          title: hasActiveRental ? 'Browse Vehicles' : 'Browse Vehicles',
+          subtitle: hasActiveRental
+              ? 'You have active rental'
+              : 'Find your perfect vehicle',
           color: Colors.orange.shade400,
           logo: Icons.directions_car,
-          onTap: () => Navigator.of(context).pushNamed('/browse-vehicles', arguments: widget.user),
+          onTap: hasActiveRental
+              ? () => Navigator.of(context)
+                  .pushNamed('/browse-vehicles', arguments: widget.user)
+              : () => Navigator.of(context)
+                  .pushNamed('/browse-vehicles', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -399,7 +408,8 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
           subtitle: 'View past rentals',
           color: Colors.purple.shade400,
           logo: Icons.history,
-          onTap: () => Navigator.of(context).pushNamed('/renter/rental-history', arguments: widget.user),
+          onTap: () => Navigator.of(context)
+              .pushNamed('/renter/rental-history', arguments: widget.user),
         ),
         const SizedBox(height: 12),
         _buildActionCard(
@@ -408,17 +418,18 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
           subtitle: 'Your favorite vehicles',
           color: Colors.red.shade400,
           logo: Icons.favorite,
-          onTap: () => Navigator.of(context).pushNamed('/renter/saved-vehicles', arguments: widget.user),
+          onTap: () => Navigator.of(context)
+              .pushNamed('/renter/saved-vehicles', arguments: widget.user),
         ),
-        const SizedBox(height: 12),
-        _buildActionCard(
-          icon: Icons.support_agent,
-          title: 'Support',
-          subtitle: 'Get help & assistance',
-          color: Colors.teal.shade400,
-          logo: Icons.support_agent,
-          onTap: () {},
-        ),
+        // const SizedBox(height: 12),
+        // _buildActionCard(
+        //   icon: Icons.support_agent,
+        //   title: 'Support',
+        //   subtitle: 'Get help & assistance',
+        //   color: Colors.teal.shade400,
+        //   logo: Icons.support_agent,
+        //   onTap: () {},
+        // ),
       ],
     );
   }
@@ -722,8 +733,8 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
                                           ),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.close,
-                                              size: 18),
+                                          icon:
+                                              const Icon(Icons.close, size: 18),
                                           onPressed: () async {
                                             final success =
                                                 await _notificationController
