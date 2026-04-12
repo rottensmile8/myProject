@@ -259,7 +259,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
           width: double.infinity,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            debugPrint('🖼️ MyVehicles Image error: $error');
+            debugPrint(' MyVehicles Image error: $error');
             return _buildAssetOrIconHeader(vehicle);
           },
         ),

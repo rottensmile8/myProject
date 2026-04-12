@@ -100,14 +100,14 @@ class DashboardPage extends StatelessWidget {
                       // Navigate to bookings page
                     },
                   ),
-                  _buildActionCard(
-                    icon: Icons.settings,
-                    title: 'Settings',
-                    color: Colors.purple.shade400,
-                    onTap: () {
-                      // Navigate to settings page
-                    },
-                  ),
+                  // _buildActionCard(
+                  //   icon: Icons.settings,
+                  //   title: 'Settings',
+                  //   color: Colors.purple.shade400,
+                  //   onTap: () {
+                  //     // Navigate to settings page
+                  //   },
+                  // ),
                   _buildActionCard(
                     icon: Icons.help_outline,
                     title: 'Support',
