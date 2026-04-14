@@ -401,6 +401,9 @@ def booking_detail(request, booking_id):
                 except Exception as e:
                     print(f"Notification error: {str(e)}")
 
+            if 'refundAmount' in data:
+                update_data['refundAmount'] = data['refundAmount']
+
             if update_data:
                 bookings_collection.update_one(
                     {"_id": ObjectId(booking_id)},

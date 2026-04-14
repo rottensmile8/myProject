@@ -142,16 +142,21 @@ class BookingController extends ChangeNotifier {
   }
 
   // Update booking status
-  Future<bool> updateBookingStatus(String bookingId, String status) async {
+  Future<bool> updateBookingStatus(String bookingId, String status,
+      {double? refundAmount}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      final body = <String, dynamic>{'status': status};
+      if (refundAmount != null) {
+        body['refundAmount'] = refundAmount;
+      }
       final response = await http.put(
         Uri.parse('$baseUrl/bookings/$bookingId/'),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({'status': status}),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {

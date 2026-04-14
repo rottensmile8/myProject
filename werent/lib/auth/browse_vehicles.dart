@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart'
-    show canLaunchUrl, LaunchMode, launchUrl;
+show canLaunchUrl, LaunchMode, launchUrl;
 import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/vehicle_controller.dart';
@@ -314,27 +314,24 @@ The renter must be at least 18 years old and possess a valid driving license app
 Booking is confirmed only after the owner's approval. Full payment of the agreed rental amount (NPR) must be made at pickup unless otherwise arranged. The total price shown is inclusive of the rental period selected.
 
 3. VEHICLE USE
-The renter agrees to use the vehicle only for lawful purposes and within the territory of Nepal. Sub-renting, racing, or off-road use is strictly prohibited unless the vehicle is explicitly listed for such use.
+The renter agrees to use the vehicle only for lawful purposes and within the territory of Nepal. Sub-renting, racing, or off-road use is strictly prohibited unless the vehicle is explicitly listed for such use. The vehicle must be returned in the same fuel level.
 
-4. FUEL & MAINTENANCE
-The vehicle must be returned in the same fuel level and condition as received. Any damage, excessive dirt, or fuel deficiency will be charged to the renter.
-
-5. DAMAGE & LIABILITY
+4. DAMAGE & LIABILITY
 The renter is fully responsible for any damage caused to the vehicle during the rental period, including accidental damage, theft, or vandalism. The owner's insurance, if any, does not cover renter negligence.
 
-6. CANCELLATION POLICY
-Cancellations made more than 24 hours before the start date will receive a full refund. Cancellations within 24 hours may be subject to a cancellation fee as determined by the owner.
+5. CANCELLATION POLICY
+Cancellations made more than 24 hours before the start date will receive a full refund. Cancellations within 24 hours will subject to 10% of cancellation fee.
 
-7. LATE RETURN
+6. LATE RETURN
 Vehicles returned after the agreed end date will incur additional charges at the daily rental rate for each extra day or part thereof.
 
-8. TRAFFIC VIOLATIONS & FINES
+7. TRAFFIC VIOLATIONS & FINES
 Any traffic violations, fines, or penalties incurred during the rental period are solely the renter's responsibility.
 
-9. ACCIDENTS
+8. ACCIDENTS
 In the event of an accident, the renter must immediately notify the owner and relevant authorities. A full report must be provided to the owner within 24 hours.
 
-10. GOVERNING LAW
+9. GOVERNING LAW
 This agreement is governed by the laws of Nepal. Any disputes shall be settled under the jurisdiction of the courts of Nepal.
 
 By proceeding with this booking, you acknowledge that you have read, understood, and agree to all the terms and conditions stated above.
@@ -349,7 +346,7 @@ By proceeding with this booking, you acknowledge that you have read, understood,
           children: [
             Icon(Icons.block, color: Colors.orange),
             SizedBox(width: 8),
-            Text('Active Rental Detected'),
+            Text('You already have Active Rental'),
           ],
         ),
         content: const Column(

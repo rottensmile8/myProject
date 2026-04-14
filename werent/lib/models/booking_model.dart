@@ -11,6 +11,7 @@ class Booking {
   final DateTime endDate;
   final double totalPrice;
   final String status; // pending, confirmed, completed, cancelled
+  final double? refundAmount;
   final DateTime createdAt;
 
   Booking({
@@ -25,6 +26,7 @@ class Booking {
     required this.startDate,
     required this.endDate,
     required this.totalPrice,
+    this.refundAmount,
     required this.status,
     required this.createdAt,
   });
@@ -46,6 +48,7 @@ class Booking {
           ? DateTime.parse(json['endDate'])
           : DateTime.now(),
       totalPrice: (json['totalPrice'] ?? 0).toDouble(),
+      refundAmount: json['refundAmount']?.toDouble(),
       status: json['status'] ?? 'pending',
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -60,6 +63,7 @@ class Booking {
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
       'totalPrice': totalPrice,
+      'refundAmount': refundAmount,
       'status': status,
     };
   }
@@ -105,7 +109,8 @@ class Booking {
 
   bool get isOverdue {
     final now = DateTime.now();
-    final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    final endDateOnly =
+        DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
     return now.isAfter(endDateOnly);
   }
 
@@ -113,15 +118,18 @@ class Booking {
     if (status != 'confirmed') return false;
     final now = DateTime.now();
     // Normalize to dates
-    final startDateOnly = DateTime(startDate.year, startDate.month, startDate.day);
-    final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
-    return now.isAfter(startDateOnly.subtract(const Duration(seconds: 1))) && 
-           now.isBefore(endDateOnly);
+    final startDateOnly =
+        DateTime(startDate.year, startDate.month, startDate.day);
+    final endDateOnly =
+        DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    return now.isAfter(startDateOnly.subtract(const Duration(seconds: 1))) &&
+        now.isBefore(endDateOnly);
   }
 
   int get daysRemaining {
     final now = DateTime.now();
-    final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    final endDateOnly =
+        DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
     if (now.isAfter(endDateOnly)) return 0;
     return endDateOnly.difference(now).inDays + 1;
   }

@@ -394,28 +394,201 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
             ),
           ),
           // Action buttons
-          if (booking.status == 'completed' ||
-              booking.status == 'cancelled' ||
-              booking.isOverdue)
-            Padding(
-              padding: const EdgeInsets.only(right: 16, bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _confirmDelete(booking),
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: const Text(
-                      'Remove from history',
-                      style: TextStyle(color: Colors.red, fontSize: 13),
+          Padding(
+            padding: const EdgeInsets.only(right: 16, bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                if (booking.status == 'pending' ||
+                    booking.status == 'confirmed')
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => _showCancelDialog(booking),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                      ),
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Cancel'),
                     ),
                   ),
-                ],
-              ),
+                if (booking.status == 'confirmed')
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => _showReturnDialog(booking),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.green.shade700,
+                      ),
+                      icon: const Icon(Icons.assignment_return),
+                      label: const Text('Return'),
+                    ),
+                  ),
+                if (booking.status == 'completed' ||
+                    booking.status == 'cancelled' ||
+                    booking.isOverdue)
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => _confirmDelete(booking),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                      ),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text(
+                        'Delete',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _showCancelDialog(Booking booking) async {
+    final now = DateTime.now();
+    final end24h = booking.endDate.subtract(const Duration(hours: 24));
+    final isWithin24h = now.isAfter(end24h);
+    final deduction = isWithin24h ? booking.totalPrice * 0.1 : 0.0;
+    final refundAmount = booking.totalPrice - deduction;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.cancel, color: const Color.fromARGB(255, 227, 118, 50)),
+            const SizedBox(width: 8),
+            const Text('Cancel Rental'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${booking.vehicleName} (${booking.dateRangeDisplay})'),
+            const SizedBox(height: 12),
+            Text('Cancellation fee:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(isWithin24h
+                ? '10% deduction (within 24h remaining)'
+                : 'No fee'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Refund:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('NPR ${refundAmount.toStringAsFixed(0)}'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep Rental'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cancel Rental', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await _bookingController.updateBookingStatus(
+          booking.id, 'cancelled',
+          refundAmount: refundAmount);
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Cancelled - Refund NPR ${refundAmount.toStringAsFixed(0)}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadBookings();
+      }
+    }
+  }
+
+  Future<void> _showReturnDialog(Booking booking) async {
+    final refundAmount =
+        (booking.daysRemaining / booking.rentalDays) * booking.totalPrice;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.assignment_return, color: Colors.green),
+            const SizedBox(width: 8),
+            const Text('Return Vehicle'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${booking.vehicleName}'),
+            const SizedBox(height: 8),
+            Text('${booking.daysRemaining} days remaining'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Refund:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('NPR ${refundAmount.toStringAsFixed(0)}'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Later'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Return Now'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await _bookingController.updateBookingStatus(
+          booking.id, 'completed',
+          refundAmount: refundAmount);
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Vehicle returned - Refund NPR ${refundAmount.toStringAsFixed(0)}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadBookings();
+      }
+    }
   }
 
   Future<void> _confirmDelete(Booking booking) async {
@@ -434,7 +607,7 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'Delete',
-              style: TextStyle(color: Colors.red),
+              style: TextStyle(color: Color.fromARGB(255, 211, 26, 13)),
             ),
           ),
         ],
