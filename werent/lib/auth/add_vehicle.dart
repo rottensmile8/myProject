@@ -20,6 +20,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final VehicleController _vehicleController = VehicleController();
   final ImagePicker _picker = ImagePicker();
 
+  // Theme Palette
+  static const Color primaryOrange = Color(0xFFFF8A00);
+  static const Color surfaceWhite = Color(0xFFFFFFFF);
+  static const Color softOrangeBg = Color(0xFFFFF5E9);
+  static const Color darkText = Color(0xFF3E2723);
+  static const Color lightText = Color(0xFF8D6E63);
+
   // Form controllers
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
@@ -27,16 +34,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _priceController = TextEditingController();
   final _pickupLocationController = TextEditingController();
 
-  // Selected values
   VehicleCategory _selectedCategory = VehicleCategory.car;
   FuelType _selectedFuelType = FuelType.petrol;
   Transmission _selectedTransmission = Transmission.manual;
 
-  // Image
   File? _selectedImage;
   String? _imageBase64;
   bool _isPickingImage = false;
-
   bool _isLoading = false;
 
   @override
@@ -60,41 +64,23 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       );
       if (image != null) {
         final bytes = await image.readAsBytes();
-
-        // VALIDATION: Size <2MB, Image format
         if (bytes.length > 2 * 1024 * 1024) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Image too large! Max 2MB supported.'),
-                backgroundColor: Colors.orange,
-              ),
+              const SnackBar(content: Text('Image too large! Max 2MB supported.'), backgroundColor: primaryOrange),
             );
           }
           return;
         }
-
-        debugPrint('📸 Image picked: ${bytes.length} bytes');
-
         setState(() {
           _selectedImage = File(image.path);
           _imageBase64 = base64Encode(bytes);
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Image selected (${(bytes.length / 1024).toStringAsFixed(1)} KB)'),
-            backgroundColor: Colors.green,
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error picking image: $e'),
-              backgroundColor: Colors.red),
+          SnackBar(content: Text('Error picking image: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -102,67 +88,38 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
   }
 
-  void _showImageSourceSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: surfaceWhite,
+      appBar: AppBar(
+        backgroundColor: surfaceWhite,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Add Vehicle', style: TextStyle(color: darkText, fontWeight: FontWeight.bold)),
+        centerTitle: true,
       ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        child: Form(
+          key: _formKey,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const Text('Select Image Source',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildSourceOption(
-                    icon: Icons.photo_library,
-                    label: 'Gallery',
-                    color: Colors.blue.shade700,
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _pickImage(ImageSource.gallery);
-                    },
-                  ),
-                  _buildSourceOption(
-                    icon: Icons.camera_alt,
-                    label: 'Camera',
-                    color: Colors.green.shade700,
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _pickImage(ImageSource.camera);
-                    },
-                  ),
-                  if (_selectedImage != null)
-                    _buildSourceOption(
-                      icon: Icons.delete_outline,
-                      label: 'Remove',
-                      color: Colors.red,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        setState(() {
-                          _selectedImage = null;
-                          _imageBase64 = null;
-                        });
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
+              _buildSectionTitle('Vehicle Photo'),
+              _buildImagePicker(),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Category'),
+              _buildCategorySelection(),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Vehicle Details'),
+              _buildVehicleDetailsForm(),
+              const SizedBox(height: 32),
+              _buildSubmitButton(),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -170,29 +127,211 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     );
   }
 
-  Widget _buildSourceOption({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText),
+      ),
+    );
+  }
+
+  Widget _buildImagePicker() {
     return GestureDetector(
-      onTap: onTap,
+      onTap: _isPickingImage ? null : _showImageSourceSheet,
+      child: Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: softOrangeBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _selectedImage != null ? primaryOrange : Colors.transparent, width: 2),
+        ),
+        child: _isPickingImage
+            ? const Center(child: CircularProgressIndicator(color: primaryOrange))
+            : _selectedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.add_a_photo_rounded, size: 48, color: primaryOrange),
+                      const SizedBox(height: 8),
+                      Text('Upload Vehicle Image', style: TextStyle(color: lightText, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+      ),
+    );
+  }
+
+// vehicle category
+  Widget _buildCategorySelection() {
+    return Row(
+      children: [
+        Expanded(child: _buildCategoryCard(VehicleCategory.car, Icons.directions_car_rounded, 'Car')),
+        const SizedBox(width: 16),
+        Expanded(child: _buildCategoryCard(VehicleCategory.bike, Icons.two_wheeler_rounded, 'Bike')),
+      ],
+    );
+  }
+
+  Widget _buildCategoryCard(VehicleCategory category, IconData icon, String label) {
+    final bool isSelected = _selectedCategory == category;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedCategory = category),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryOrange : softOrangeBg,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: isSelected ? Colors.white : primaryOrange),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(color: isSelected ? Colors.white : darkText, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVehicleDetailsForm() {
+    return Column(
+      children: [
+        _buildThemedField(_nameController, 'Vehicle Name', Icons.drive_file_rename_outline_rounded),
+        const SizedBox(height: 16),
+        _buildThemedField(_brandController, 'Brand (e.g. Toyota, Honda)', Icons.business_rounded),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildThemedField(_modelYearController, 'Year', Icons.calendar_today_rounded, isNumber: true)),
+            const SizedBox(width: 16),
+            Expanded(child: _buildThemedField(_priceController, 'Price/Day', Icons.payments_outlined, isNumber: true)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (_selectedCategory == VehicleCategory.car) ...[
+          _buildDropdown<FuelType>(
+            label: 'Fuel Type',
+            value: _selectedFuelType,
+            items: FuelType.values,
+            onChanged: (v) => setState(() => _selectedFuelType = v!),
+          ),
+          const SizedBox(height: 16),
+        if (_selectedCategory == VehicleCategory.bike) ...[
+          _buildDropdown<FuelType>(
+            label: 'Fuel Type',
+            value: _selectedFuelType,
+            items: FuelType.values,
+            onChanged: (v) => setState(() => _selectedFuelType = v!),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        _buildThemedField(_pickupLocationController, 'Pickup Location', Icons.location_on_outlined),
+      ],
+      ]
+    );
+  }
+
+  Widget _buildThemedField(TextEditingController controller, String hint, IconData icon, {bool isNumber = false}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: const TextStyle(color: darkText),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.black26),
+        prefixIcon: Icon(icon, color: primaryOrange, size: 22),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFEEEEEE))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: primaryOrange, width: 1.5)),
+      ),
+      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+    );
+  }
+
+  Widget _buildDropdown<T>({required String label, required T value, required List<T> items, required ValueChanged<T?> onChanged}) {
+    return DropdownButtonFormField<T>(
+      value: value,
+      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e.toString().split('.').last.toUpperCase()))).toList(),
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: lightText),
+        prefixIcon: const Icon(Icons.settings_input_component_rounded, color: primaryOrange),
+        filled: true,
+        fillColor: Colors.white,
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFEEEEEE))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: primaryOrange, width: 1.5)),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submitVehicle,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryOrange,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+        child: _isLoading 
+            ? const CircularProgressIndicator(color: Colors.white) 
+            : const Text('List Vehicle', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Select Source", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText)),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSourceBtn(Icons.photo_library_rounded, "Gallery", () => _pickImage(ImageSource.gallery)),
+                _buildSourceBtn(Icons.camera_alt_rounded, "Camera", () => _pickImage(ImageSource.camera)),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceBtn(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: () { Navigator.pop(context); onTap(); },
       child: Column(
         children: [
           Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withOpacity(0.3)),
-            ),
-            child: Icon(icon, color: color, size: 30),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: softOrangeBg, shape: BoxShape.circle),
+            child: Icon(icon, color: primaryOrange, size: 30),
           ),
           const SizedBox(height: 8),
-          Text(label,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: darkText)),
         ],
       ),
     );
@@ -200,17 +339,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   Future<void> _submitVehicle() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // Check if user is approved
     if (!widget.user.isActive) {
-      _showApprovalRequiredDialog(context);
-      return;
+       _showApprovalRequiredDialog(context);
+       return;
     }
-
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
       final vehicle = await _vehicleController.addVehicle(
         ownerId: widget.user.id,
@@ -224,31 +357,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         pickupLocation: _pickupLocationController.text.trim(),
         imageBase64: _imageBase64,
       );
-
       if (vehicle != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Vehicle added successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -256,449 +371,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Approval Required'),
-        content: const Text(
-          'Your account is currently pending admin approval. You can view your dashboard, but adding new vehicles is disabled until your account is activated.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Vehicle'),
-        backgroundColor: Colors.green.shade700,
-        elevation: 0,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.green.shade700, Colors.green.shade50],
-            stops: const [0.0, 0.3],
-          ),
-        ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildImagePicker(),
-                  const SizedBox(height: 16),
-                  _buildCategorySelection(),
-                  const SizedBox(height: 24),
-                  _buildVehicleDetailsForm(),
-                  const SizedBox(height: 24),
-                  _buildSubmitButton(),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImagePicker() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Vehicle Photo',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Add a photo to attract more renters',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: _isPickingImage ? null : _showImageSourceSheet,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 180,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _selectedImage != null
-                        ? Colors.green.shade400
-                        : Colors.grey.shade300,
-                    width: _selectedImage != null ? 2 : 1,
-                    style: _selectedImage != null
-                        ? BorderStyle.solid
-                        : BorderStyle.solid,
-                  ),
-                ),
-                child: _isPickingImage
-                    ? const Center(child: CircularProgressIndicator())
-                    : _selectedImage != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(11),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.file(_selectedImage!, fit: BoxFit.cover),
-                                Positioned(
-                                  bottom: 8,
-                                  right: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.edit,
-                                            color: Colors.white, size: 14),
-                                        SizedBox(width: 4),
-                                        Text('Change',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_photo_alternate_outlined,
-                                  size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Tap to add a photo',
-                                style: TextStyle(
-                                    color: Colors.grey.shade500, fontSize: 14),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Gallery or Camera',
-                                style: TextStyle(
-                                    color: Colors.grey.shade400, fontSize: 12),
-                              ),
-                            ],
-                          ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategorySelection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Select Category',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCategoryCard(
-                    category: VehicleCategory.car,
-                    icon: Icons.directions_car,
-                    label: 'Car',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildCategoryCard(
-                    category: VehicleCategory.bike,
-                    icon: Icons.two_wheeler,
-                    label: 'Bike',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryCard({
-    required VehicleCategory category,
-    required IconData icon,
-    required String label,
-  }) {
-    final isSelected = _selectedCategory == category;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedCategory = category;
-          if (category == VehicleCategory.bike) {
-            _selectedFuelType = FuelType.petrol;
-            _selectedTransmission = Transmission.manual;
-          }
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green.shade100 : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.green.shade700 : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 40,
-              color: isSelected ? Colors.green.shade700 : Colors.grey.shade600,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color:
-                    isSelected ? Colors.green.shade700 : Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVehicleDetailsForm() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Vehicle Details',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            // Name
-            TextFormField(
-              controller: _nameController,
-              decoration: _inputDecoration('Vehicle Name', Icons.label),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter vehicle name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Brand
-            TextFormField(
-              controller: _brandController,
-              decoration: _inputDecoration('Brand', Icons.business),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter brand';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Model Year
-            TextFormField(
-              controller: _modelYearController,
-              decoration: _inputDecoration('Model Year', Icons.calendar_today),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter model year';
-                }
-                final year = int.tryParse(value.trim());
-                if (year == null ||
-                    year < 1900 ||
-                    year > DateTime.now().year + 1) {
-                  return 'Please enter a valid year';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Price per day
-            TextFormField(
-              controller: _priceController,
-              decoration: _inputDecoration(
-                'Price per Day (NPR)',
-                Icons.attach_money,
-              ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter price per day';
-                }
-                final price = double.tryParse(value.trim());
-                if (price == null || price <= 0) {
-                  return 'Please enter a valid price';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Fuel Type (only for cars)
-            if (_selectedCategory == VehicleCategory.car) ...[
-              DropdownButtonFormField<FuelType>(
-                initialValue: _selectedFuelType,
-                decoration: _inputDecoration(
-                  'Fuel Type',
-                  Icons.local_gas_station,
-                ),
-                items: FuelType.values.map((fuel) {
-                  return DropdownMenuItem(
-                    value: fuel,
-                    child: Text(_getFuelTypeDisplay(fuel)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedFuelType = value;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Transmission (only for cars)
-              DropdownButtonFormField<Transmission>(
-                initialValue: _selectedTransmission,
-                decoration: _inputDecoration('Transmission', Icons.settings),
-                items: Transmission.values.map((trans) {
-                  return DropdownMenuItem(
-                    value: trans,
-                    child: Text(
-                      trans == Transmission.automatic ? 'Automatic' : 'Manual',
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedTransmission = value;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Pickup Location
-            TextFormField(
-              controller: _pickupLocationController,
-              decoration: _inputDecoration(
-                'Pickup Location',
-                Icons.location_on,
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter pickup location';
-                }
-                return null;
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.green.shade700),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.green.shade700, width: 2),
-      ),
-      filled: true,
-      fillColor: Colors.white,
-    );
-  }
-
-  String _getFuelTypeDisplay(FuelType fuel) {
-    switch (fuel) {
-      case FuelType.petrol:
-        return 'Petrol';
-      case FuelType.diesel:
-        return 'Diesel';
-      case FuelType.electric:
-        return 'Electric';
-      case FuelType.hybrid:
-        return 'Hybrid';
-    }
-  }
-
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _submitVehicle,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green.shade700,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
-                'Add Vehicle',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+        title: const Text('Approval Pending'),
+        content: const Text('Your account is currently being reviewed. You can list vehicles once an admin approves your profile.'),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK', style: TextStyle(color: primaryOrange)))],
       ),
     );
   }

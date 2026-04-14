@@ -21,6 +21,13 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   bool _isLoading = true;
   VehicleCategory _selectedCategory = VehicleCategory.car;
 
+  // Theme Palette
+  static const Color primaryOrange = Color(0xFFFF8A00);
+  static const Color surfaceWhite = Color(0xFFFFFFFF);
+  static const Color softOrangeBg = Color(0xFFFFF5E9);
+  static const Color darkText = Color(0xFF3E2723);
+  static const Color lightText = Color(0xFF8D6E63);
+
   @override
   void initState() {
     super.initState();
@@ -28,32 +35,18 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   }
 
   Future<void> _loadVehicles() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
-      final vehicles = await _vehicleController.getOwnerVehicles(
-        widget.user.id,
-      );
-      setState(() {
-        _vehicles = vehicles;
-      });
+      final vehicles = await _vehicleController.getOwnerVehicles(widget.user.id);
+      setState(() => _vehicles = vehicles);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading vehicles: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -62,12 +55,9 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Vehicle'),
-        content: const Text('Are you sure you want to delete this vehicle?'),
+        content: const Text('Remove this vehicle from your fleet?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -78,59 +68,37 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 
     if (confirm == true) {
       final success = await _vehicleController.deleteVehicle(vehicleId);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Vehicle deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _loadVehicles();
-      }
+      if (success && mounted) _loadVehicles();
     }
   }
 
   Future<void> _toggleAvailability(String vehicleId) async {
     final success = await _vehicleController.toggleAvailability(vehicleId);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Availability updated'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      _loadVehicles();
-    }
+    if (success && mounted) _loadVehicles();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: surfaceWhite,
       appBar: AppBar(
-        title: const Text('My Vehicles'),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: surfaceWhite,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('My Vehicles', style: TextStyle(color: darkText, fontWeight: FontWeight.bold)),
+        centerTitle: true,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadVehicles),
+          IconButton(icon: const Icon(Icons.refresh_rounded, color: primaryOrange), onPressed: _loadVehicles),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.green.shade700, Colors.green.shade50],
-            stops: const [0.0, 0.3],
-          ),
-        ),
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              )
-            : _vehicles.isEmpty
-                ? _buildEmptyState()
-                : _buildVehicleList(),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: primaryOrange))
+          : _vehicles.isEmpty
+              ? _buildEmptyState()
+              : _buildVehicleList(),
     );
   }
 
@@ -139,28 +107,11 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.directions_car_outlined,
-            size: 80,
-            color: Colors.white.withOpacity(0.5),
-          ),
+          Icon(Icons.garage_rounded, size: 80, color: softOrangeBg),
           const SizedBox(height: 16),
-          const Text(
-            'No vehicles yet',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          const Text('No vehicles found', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkText)),
           const SizedBox(height: 8),
-          Text(
-            'Add your first vehicle to start renting',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.8),
-            ),
-          ),
+          const Text('Add your first vehicle to start earning', style: TextStyle(color: lightText)),
         ],
       ),
     );
@@ -173,34 +124,26 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   Widget _buildVehicleList() {
     return Column(
       children: [
+        // Category Selector
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildCategoryTab(
-                Icons.directions_car,
-                VehicleCategory.car,
-                'Cars',
-              ),
-              _buildCategoryTab(
-                Icons.two_wheeler,
-                VehicleCategory.bike,
-                'Bikes',
-              ),
+              _buildCategoryTab(Icons.directions_car_rounded, VehicleCategory.car, 'Cars'),
+              const SizedBox(width: 12),
+              _buildCategoryTab(Icons.two_wheeler_rounded, VehicleCategory.bike, 'Bikes'),
             ],
           ),
         ),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadVehicles,
+            color: primaryOrange,
             child: ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               itemCount: filteredVehicles.length,
-              itemBuilder: (context, index) {
-                final vehicle = filteredVehicles[index];
-                return _buildVehicleCard(vehicle);
-              },
+              itemBuilder: (context, index) => _buildVehicleCard(filteredVehicles[index]),
             ),
           ),
         ),
@@ -208,36 +151,24 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
     );
   }
 
-  Widget _buildCategoryTab(
-    IconData icon,
-    VehicleCategory category,
-    String label,
-  ) {
+  Widget _buildCategoryTab(IconData icon, VehicleCategory category, String label) {
+    final bool isSelected = _selectedCategory == category;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedCategory = category;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      onTap: () => setState(() => _selectedCategory = category),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: _selectedCategory == category
-              ? Colors.green.shade400
-              : Colors.green.shade100,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? primaryOrange : softOrangeBg,
+          borderRadius: BorderRadius.circular(15),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20, color: Colors.white),
-            const SizedBox(width: 4),
+            Icon(icon, size: 18, color: isSelected ? Colors.white : primaryOrange),
+            const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: isSelected ? Colors.white : darkText, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -247,167 +178,103 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 
   Widget _buildVehicleCard(Vehicle vehicle) {
     final imageBytes = Vehicle.safeDecodeImage(vehicle.imageBase64);
-    final hasImage = imageBytes != null;
 
-    Widget? imageHeader;
-    if (hasImage) {
-      imageHeader = ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: Image.memory(
-          imageBytes!,
-          height: 150,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            debugPrint(' MyVehicles Image error: $error');
-            return _buildAssetOrIconHeader(vehicle);
-          },
-        ),
-      );
-    } else {
-      imageHeader = _buildAssetOrIconHeader(vehicle);
-    }
-
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
       child: Column(
         children: [
-          imageHeader,
-          // Name, brand, year + availability
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
+          // Image Section
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: Stack(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        vehicle.name,
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${vehicle.brand} • ${vehicle.modelYear}',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: vehicle.isAvailable
-                        ? Colors.green.shade100
-                        : Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    vehicle.isAvailable ? 'Available' : 'Rented',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: vehicle.isAvailable
-                          ? Colors.green.shade700
-                          : const Color.fromARGB(255, 198, 73, 73),
+                imageBytes != null
+                    ? Image.memory(imageBytes, height: 160, width: double.infinity, fit: BoxFit.cover)
+                    : _buildPlaceholderHeader(vehicle),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: vehicle.isAvailable ? Colors.green : Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      vehicle.isAvailable ? 'Available' : 'Rented',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          // Vehicle details —  use Wrap to prevent overflow
+
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 6,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildDetailItem(
-                      Icons.attach_money,
-                      vehicle.pricePerDayNPR,
-                    ),
-                    if (vehicle.category == VehicleCategory.car) ...[
-                      _buildDetailItem(
-                        Icons.local_gas_station,
-                        vehicle.fuelTypeDisplay,
-                      ),
-                      _buildDetailItem(
-                        Icons.settings,
-                        vehicle.transmissionDisplay,
-                      ),
-                    ],
+                    Text(vehicle.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText)),
+                    Text("NPR ${vehicle.pricePerDayNPR}", style: const TextStyle(fontWeight: FontWeight.bold, color: primaryOrange)),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _buildDetailItem(Icons.location_on, vehicle.pickupLocation),
+                Text("${vehicle.brand} • ${vehicle.modelYear}", style: const TextStyle(fontSize: 13, color: lightText)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 14, color: primaryOrange),
+                    const SizedBox(width: 4),
+                    Text(vehicle.pickupLocation, style: const TextStyle(fontSize: 13, color: lightText)),
+                  ],
+                ),
               ],
             ),
           ),
-          // Action buttons
+
+          // Action Buttons Section
           Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 243, 239, 235),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => _toggleAvailability(vehicle.id),
-                    icon: Icon(
-                      vehicle.isAvailable
-                          ? Icons.pause_circle_outline
-                          : Icons.play_circle_outline,
-                      color: Colors.orange,
-                    ),
-                    label: Text(
-                      vehicle.isAvailable
-                          ? 'Mark as Rented'
-                          : 'Mark as Available',
-                      style: const TextStyle(color: Colors.orange),
-                    ),
-                  ),
+                _buildActionButton(
+                  icon: vehicle.isAvailable ? Icons.pause_circle_rounded : Icons.play_circle_rounded,
+                  label: vehicle.isAvailable ? 'Mark as Rented' : 'Mark as Available',
+                  color: Colors.amber.shade800,
+                  onTap: () => _toggleAvailability(vehicle.id),
                 ),
-                Container(width: 1, height: 40, color: Colors.grey.shade200),
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () async {
-                      final result = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => EditVehicleScreen(
-                            user: widget.user,
-                            vehicle: vehicle,
-                          ),
-                        ),
-                      );
-                      if (result == true) _loadVehicles();
-                    },
-                    icon: const Icon(Icons.edit_outlined, color: Colors.blue),
-                    label: const Text(
-                      'Edit',
-                      style: TextStyle(color: Colors.blue),
-                    ),
-                  ),
+                _buildActionButton(
+                  icon: Icons.edit_rounded,
+                  label: 'Edit',
+                  color: Colors.blue,
+                  onTap: () async {
+                    final res = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => EditVehicleScreen(user: widget.user, vehicle: vehicle)),
+                    );
+                    if (res == true) _loadVehicles();
+                  },
                 ),
-                Container(width: 1, height: 40, color: Colors.grey.shade200),
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => _deleteVehicle(vehicle.id),
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    label: const Text(
-                      'Delete',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
+                _buildActionButton(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Delete',
+                  color: Colors.red,
+                  onTap: () => _deleteVehicle(vehicle.id),
                 ),
               ],
             ),
@@ -417,60 +284,23 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
     );
   }
 
-  Widget _buildDetailItem(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: Colors.grey.shade600),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
-      ],
+  Widget _buildActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18, color: color),
+      label: Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
     );
   }
 
-  Widget _buildAssetOrIconHeader(Vehicle vehicle) {
-    final assetPath = vehicle.category == VehicleCategory.bike
-        ? 'assets/images/bike.svg'
-        : 'assets/images/car.svg';
-
-    debugPrint('🔍 Loading asset header: $assetPath for ${vehicle.name}');
-
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      child: Image.asset(
-        assetPath,
-        height: 150,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint('🖼️ Asset Image failed ($assetPath): $error');
-          // Fallback to SVG
-          return SvgPicture.asset(
-            assetPath,
-            height: 150,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            placeholderBuilder: (context) {
-              debugPrint('⚠️ SVG also failed for $assetPath - using icon');
-              return Container(
-                height: 150,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16)),
-                ),
-                child: Icon(
-                  vehicle.category == VehicleCategory.bike
-                      ? Icons.two_wheeler
-                      : Icons.directions_car,
-                  size: 40,
-                  color: Colors.green.shade400,
-                ),
-              );
-            },
-          );
-        },
+  Widget _buildPlaceholderHeader(Vehicle vehicle) {
+    return Container(
+      height: 160,
+      width: double.infinity,
+      color: softOrangeBg,
+      child: Icon(
+        vehicle.category == VehicleCategory.bike ? Icons.two_wheeler_rounded : Icons.directions_car_rounded,
+        size: 50,
+        color: primaryOrange.withOpacity(0.5),
       ),
     );
   }

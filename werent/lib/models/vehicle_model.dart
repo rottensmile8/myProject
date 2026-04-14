@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 enum VehicleCategory { car, bike }
 
-enum FuelType { petrol, diesel, electric, hybrid }
+enum FuelType { petrol, electric, hybrid }
 
 enum Transmission { manual, automatic }
 
@@ -83,8 +83,8 @@ class Vehicle {
 
   static FuelType _parseFuelType(String? fuelType) {
     switch (fuelType?.toLowerCase()) {
-      case 'diesel':
-        return FuelType.diesel;
+      // case 'diesel':
+      //   return FuelType.diesel;
       case 'electric':
         return FuelType.electric;
       case 'hybrid':
@@ -113,8 +113,8 @@ class Vehicle {
     switch (fuelType) {
       case FuelType.petrol:
         return 'Petrol';
-      case FuelType.diesel:
-        return 'Diesel';
+      // case FuelType.diesel:
+      //   return 'Diesel';
       case FuelType.electric:
         return 'Electric';
       case FuelType.hybrid:
@@ -133,7 +133,7 @@ class Vehicle {
   /// - Comprehensive error logging
   static Uint8List? safeDecodeImage(String? base64Str) {
     if (base64Str == null || base64Str.isEmpty) {
-      debugPrint('❌ Vehicle imageBase64 is empty/null');
+      debugPrint('Vehicle imageBase64 is empty/null');
       return null;
     }
 
@@ -163,7 +163,7 @@ class Vehicle {
 
       // Basic MIME validation
       if (mimeType != null && !mimeType.startsWith('image/')) {
-        debugPrint('❌ Invalid MIME type: $mimeType');
+        debugPrint('Invalid MIME type: $mimeType');
         return null;
       }
 
@@ -171,7 +171,7 @@ class Vehicle {
           '✅ Image decoded: ${bytes.length} bytes (${mimeType ?? 'unknown'})');
       return bytes;
     } catch (e) {
-      debugPrint('❌ Base64 decode FAILED: $e');
+      debugPrint('Base64 decode FAILED: $e');
       debugPrint(
           '📄 Base64 preview: ${base64Str.length > 100 ? base64Str.substring(0, 100) + '...' : base64Str}');
       return null;

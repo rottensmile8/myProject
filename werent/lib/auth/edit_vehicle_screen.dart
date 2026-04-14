@@ -620,8 +620,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     switch (fuel) {
       case FuelType.petrol:
         return 'Petrol';
-      case FuelType.diesel:
-        return 'Diesel';
+      // case FuelType.diesel:
+      //   return 'Diesel';
       case FuelType.electric:
         return 'Electric';
       case FuelType.hybrid:
