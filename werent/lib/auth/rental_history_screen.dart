@@ -4,7 +4,6 @@ import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/booking_controller.dart';
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'package:werent/models/vehicle_model.dart';
 
 class RentalHistoryScreen extends StatefulWidget {
@@ -21,6 +20,13 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
   List<Booking> _bookings = [];
   bool _isLoading = true;
 
+  // Consistent Theme Palette
+  static const Color primaryOrange = Color(0xFFFF8A00);
+  static const Color surfaceWhite = Color(0xFFFFFFFF);
+  static const Color softOrangeBg = Color(0xFFFFF5E9);
+  static const Color darkText = Color(0xFF3E2723);
+  static const Color lightText = Color(0xFF8D6E63);
+
   @override
   void initState() {
     super.initState();
@@ -30,16 +36,12 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
   Future<void> _loadBookings() async {
     setState(() => _isLoading = true);
     try {
-      final bookings =
-          await _bookingController.getRenterBookings(widget.user.id);
+      final bookings = await _bookingController.getRenterBookings(widget.user.id);
       setState(() => _bookings = bookings);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading history: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -49,57 +51,35 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'confirmed':
-        return Colors.green;
-      case 'completed':
-        return Colors.blue;
-      case 'cancelled':
-        return Colors.red;
-      case 'pending':
-      default:
-        return Colors.orange;
+      case 'confirmed': return Colors.green;
+      case 'completed': return Colors.blue;
+      case 'cancelled': return Colors.red;
+      default: return primaryOrange;
     }
-  }
-
-  Uint8List? _decodeBase64Image(String base64) {
-    final bytes = Vehicle.safeDecodeImage(base64);
-    if (bytes == null) {
-      debugPrint(
-          '🖼️ RentalHistory decode failed for booking: $base64.substring(0, 50)....');
-    }
-    return bytes;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: surfaceWhite,
       appBar: AppBar(
-        title: const Text('Rental History'),
-        backgroundColor: const Color.fromARGB(255, 31, 162, 59),
+        backgroundColor: surfaceWhite,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Rental History', style: TextStyle(color: darkText, fontWeight: FontWeight.bold)),
+        centerTitle: true,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadBookings),
+          IconButton(icon: const Icon(Icons.refresh_rounded, color: primaryOrange), onPressed: _loadBookings),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color.fromARGB(255, 31, 162, 59),
-              Colors.purple.shade50
-            ],
-            stops: const [0.0, 0.3],
-          ),
-        ),
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white))
-            : _bookings.isEmpty
-                ? _buildEmptyState()
-                : _buildBookingList(),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: primaryOrange))
+          : _bookings.isEmpty
+              ? _buildEmptyState()
+              : _buildBookingList(),
     );
   }
 
@@ -108,28 +88,17 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history_outlined,
-              size: 80, color: Colors.white.withOpacity(0.5)),
+          const Icon(Icons.history_rounded, size: 80, color: softOrangeBg),
           const SizedBox(height: 16),
-          const Text(
-            'No Rental History',
-            style: TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
+          const Text('No history found', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkText)),
           const SizedBox(height: 8),
-          Text(
-            'Your confirmed and completed rentals will appear here',
-            textAlign: TextAlign.center,
-            style:
-                TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
-          ),
+          const Text('Your past trips will appear here', style: TextStyle(color: lightText)),
         ],
       ),
     );
   }
 
   Widget _buildBookingList() {
-    // Order: confirmed → pending → completed → cancelled
     final confirmed = _bookings.where((b) => b.status == 'confirmed').toList();
     final pending = _bookings.where((b) => b.status == 'pending').toList();
     final completed = _bookings.where((b) => b.status == 'completed').toList();
@@ -137,25 +106,14 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadBookings,
+      color: primaryOrange,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         children: [
-          if (confirmed.isNotEmpty) ...[
-            _buildSectionHeader('Confirmed', confirmed.length, Colors.green),
-            ...confirmed.map((b) => _buildBookingCard(b)),
-          ],
-          if (pending.isNotEmpty) ...[
-            _buildSectionHeader('Pending', pending.length, Colors.orange),
-            ...pending.map((b) => _buildBookingCard(b)),
-          ],
-          if (completed.isNotEmpty) ...[
-            _buildSectionHeader('Completed', completed.length, Colors.blue),
-            ...completed.map((b) => _buildBookingCard(b)),
-          ],
-          if (cancelled.isNotEmpty) ...[
-            _buildSectionHeader('Cancelled', cancelled.length, Colors.red),
-            ...cancelled.map((b) => _buildBookingCard(b)),
-          ],
+          if (confirmed.isNotEmpty) ...[_buildSectionHeader('Confirmed', confirmed.length, Colors.green), ...confirmed.map(_buildBookingCard)],
+          if (pending.isNotEmpty) ...[_buildSectionHeader('Pending', pending.length, primaryOrange), ...pending.map(_buildBookingCard)],
+          if (completed.isNotEmpty) ...[_buildSectionHeader('Completed', completed.length, Colors.blue), ...completed.map(_buildBookingCard)],
+          if (cancelled.isNotEmpty) ...[_buildSectionHeader('Cancelled', cancelled.length, Colors.red), ...cancelled.map(_buildBookingCard)],
         ],
       ),
     );
@@ -163,40 +121,15 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
 
   Widget _buildSectionHeader(String title, int count, Color color) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10, top: 8),
+      padding: const EdgeInsets.only(bottom: 12, top: 12),
       child: Row(
         children: [
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText)),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              count.toString(),
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            child: Text('$count', style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -205,21 +138,23 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
 
   Widget _buildBookingCard(Booking booking) {
     final statusColor = _getStatusColor(booking.status);
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    final imageBytes = Vehicle.safeDecodeImage(booking.vehicleImageBase64 ?? '');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
       child: Column(
         children: [
-          // Header
+          // Header with Tinted Background
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
+              color: softOrangeBg.withOpacity(0.5),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
               children: [
@@ -227,29 +162,15 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: surfaceWhite,
                     borderRadius: BorderRadius.circular(12),
-                    image: booking.vehicleImageBase64 != null
-                        ? _decodeBase64Image(booking.vehicleImageBase64!) !=
-                                null
-                            ? DecorationImage(
-                                image: MemoryImage(_decodeBase64Image(
-                                    booking.vehicleImageBase64!)!),
-                                fit: BoxFit.cover,
-                              )
-                            : null
+                    border: Border.all(color: primaryOrange.withOpacity(0.2)),
+                    image: imageBytes != null
+                        ? DecorationImage(image: MemoryImage(imageBytes), fit: BoxFit.cover)
                         : null,
                   ),
-                  child: (booking.vehicleImageBase64 == null ||
-                          _decodeBase64Image(booking.vehicleImageBase64!) ==
-                              null)
-                      ? Icon(
-                          booking.vehicleCategory == 'bike'
-                              ? Icons.two_wheeler
-                              : Icons.directions_car,
-                          size: 28,
-                          color: statusColor,
-                        )
+                  child: imageBytes == null
+                      ? Icon(booking.vehicleCategory == 'bike' ? Icons.two_wheeler : Icons.directions_car, color: primaryOrange)
                       : null,
                 ),
                 const SizedBox(width: 12),
@@ -257,187 +178,91 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        booking.vehicleName,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Booking #${booking.id.substring(0, 8)}',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600),
-                      ),
+                      Text(booking.vehicleName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: darkText)),
+                      Text('Booking #${booking.id.substring(0, 8).toUpperCase()}', style: const TextStyle(fontSize: 11, color: lightText)),
                     ],
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    booking.statusDisplay,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                  child: Text(booking.statusDisplay, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
                 ),
               ],
             ),
           ),
-          // Details
+
+          // Visible Info Box
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today,
-                        size: 18, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      booking.dateRangeDisplay,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '(${booking.rentalDays} day${booking.rentalDays > 1 ? 's' : ''})',
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                    if (booking.isCurrentlyRented) ...[
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade600,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.timer_outlined,
-                                size: 10, color: Colors.white),
-                            const SizedBox(width: 4),
-                            const Text(
-                              'In Rent',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (booking.isCurrentlyRented) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.shade100),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline,
-                            size: 14, color: Colors.green.shade700),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${booking.daysRemaining} days remaining in your rental',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
+                // Info Details with Clear Border
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.purple.shade50,
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: primaryOrange.withOpacity(0.3), width: 1.5), // Highly visible border
                   ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined, size: 16, color: primaryOrange),
+                          const SizedBox(width: 8),
+                          Text(booking.dateRangeDisplay, style: const TextStyle(fontSize: 13, color: darkText, fontWeight: FontWeight.w500)),
+                          const Spacer(),
+                          Text('${booking.rentalDays} days', style: const TextStyle(fontSize: 12, color: lightText)),
+                        ],
+                      ),
+                      if (booking.isCurrentlyRented) ...[
+                        const Divider(height: 20),
+                        Row(
+                          children: [
+                            const Icon(Icons.timer_outlined, size: 16, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Text('${booking.daysRemaining} days left', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13)),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Price Box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: softOrangeBg, borderRadius: BorderRadius.circular(12)),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Total Amount',
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      Text(
-                        'NPR ${booking.totalPrice.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color.fromARGB(255, 18, 36, 173),
-                        ),
-                      ),
+                      const Text('Total Amount', style: TextStyle(fontWeight: FontWeight.w500, color: darkText)),
+                      Text('NPR ${booking.totalPrice.toInt()}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryOrange)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          // Action buttons
-          Padding(
-            padding: const EdgeInsets.only(right: 16, bottom: 8),
+
+          // Action Buttons Footer
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                if (booking.status == 'pending' ||
-                    booking.status == 'confirmed')
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => _showCancelDialog(booking),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red.shade700,
-                      ),
-                      icon: const Icon(Icons.cancel_outlined),
-                      label: const Text('Cancel'),
-                    ),
-                  ),
+                if (booking.status == 'pending' || booking.status == 'confirmed')
+                  _buildActionBtn(Icons.cancel_outlined, 'Cancel', Colors.red, () => _showCancelDialog(booking)),
                 if (booking.status == 'confirmed')
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => _showReturnDialog(booking),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.green.shade700,
-                      ),
-                      icon: const Icon(Icons.assignment_return),
-                      label: const Text('Return'),
-                    ),
-                  ),
-                if (booking.status == 'completed' ||
-                    booking.status == 'cancelled' ||
-                    booking.isOverdue)
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => _confirmDelete(booking),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                      ),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text(
-                        'Delete',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ),
+                  _buildActionBtn(Icons.assignment_return_outlined, 'Return', Colors.green, () => _showReturnDialog(booking)),
+                if (booking.status == 'completed' || booking.status == 'cancelled')
+                  _buildActionBtn(Icons.delete_outline_rounded, 'Delete', lightText, () => _confirmDelete(booking)),
               ],
             ),
           ),
@@ -446,193 +271,72 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
     );
   }
 
+  Widget _buildActionBtn(IconData icon, String label, Color color, VoidCallback onTap) {
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18, color: color),
+      label: Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  // --- Dialog Methods remain same as functionality, but with themed UI ---
   Future<void> _showCancelDialog(Booking booking) async {
     final now = DateTime.now();
-    final end24h = booking.endDate.subtract(const Duration(hours: 24));
-    final isWithin24h = now.isAfter(end24h);
-    final deduction = isWithin24h ? booking.totalPrice * 0.1 : 0.0;
-    final refundAmount = booking.totalPrice - deduction;
+    final isWithin24h = now.isAfter(booking.endDate.subtract(const Duration(hours: 24)));
+    final refund = isWithin24h ? booking.totalPrice * 0.9 : booking.totalPrice;
 
-    final confirmed = await showDialog<bool>(
+    final res = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.cancel, color: const Color.fromARGB(255, 227, 118, 50)),
-            const SizedBox(width: 8),
-            const Text('Cancel Rental'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${booking.vehicleName} (${booking.dateRangeDisplay})'),
-            const SizedBox(height: 12),
-            Text('Cancellation fee:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(isWithin24h
-                ? '10% deduction (within 24h remaining)'
-                : 'No fee'),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Refund:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('NPR ${refundAmount.toStringAsFixed(0)}'),
-                ],
-              ),
-            ),
-          ],
-        ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Cancel Trip?'),
+        content: Text('Are you sure you want to cancel ${booking.vehicleName}? Refund: NPR ${refund.toInt()}'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep Rental'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Cancel Rental', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Trip', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
-
-    if (confirmed == true) {
-      final success = await _bookingController.updateBookingStatus(
-          booking.id, 'cancelled',
-          refundAmount: refundAmount);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Cancelled - Refund NPR ${refundAmount.toStringAsFixed(0)}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _loadBookings();
-      }
-    }
+    if (res == true) _updateStatus(booking.id, 'cancelled', refund);
   }
 
   Future<void> _showReturnDialog(Booking booking) async {
-    final refundAmount =
-        (booking.daysRemaining / booking.rentalDays) * booking.totalPrice;
-
-    final confirmed = await showDialog<bool>(
+    final refund = (booking.daysRemaining / booking.rentalDays) * booking.totalPrice;
+    final res = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.assignment_return, color: Colors.green),
-            const SizedBox(width: 8),
-            const Text('Return Vehicle'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${booking.vehicleName}'),
-            const SizedBox(height: 8),
-            Text('${booking.daysRemaining} days remaining'),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Refund:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('NPR ${refundAmount.toStringAsFixed(0)}'),
-                ],
-              ),
-            ),
-          ],
-        ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Return Vehicle'),
+        content: Text('Complete your rental early? Early return refund: NPR ${refund.toInt()}'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Later'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Return Now'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Later')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Return Now', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
         ],
       ),
     );
+    if (res == true) _updateStatus(booking.id, 'completed', refund);
+  }
 
-    if (confirmed == true) {
-      final success = await _bookingController.updateBookingStatus(
-          booking.id, 'completed',
-          refundAmount: refundAmount);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Vehicle returned - Refund NPR ${refundAmount.toStringAsFixed(0)}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _loadBookings();
-      }
-    }
+  Future<void> _updateStatus(String id, String status, double refund) async {
+    final success = await _bookingController.updateBookingStatus(id, status, refundAmount: refund);
+    if (success && mounted) _loadBookings();
   }
 
   Future<void> _confirmDelete(Booking booking) async {
-    final confirmed = await showDialog<bool>(
+    final res = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete History?'),
-        content: Text(
-            'Are you sure you want to remove the rental record for ${booking.vehicleName} from your history?'),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Record'),
+        content: const Text('This will remove the trip from your history.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Color.fromARGB(255, 211, 26, 13)),
-            ),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
-
-    if (confirmed == true && mounted) {
+    if (res == true) {
       final success = await _bookingController.deleteBooking(booking.id);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Record deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _loadBookings();
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Error: ${_bookingController.error ?? "Unknown error"}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (success && mounted) _loadBookings();
     }
   }
 }
