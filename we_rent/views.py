@@ -7,7 +7,7 @@ from db.mongodb import users_collection, vehicles_collection, bookings_collectio
 import json
 from django.http import JsonResponse
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from .models import User
 
 
@@ -39,7 +39,7 @@ def signup(request):
             "email": email,
             "password": hashed_password,
             "role": role,
-            "isActive": False,  # Store in MongoDB as well
+            "isActive": False,  
         }
 
         # Insert user into MongoDB
@@ -51,7 +51,7 @@ def signup(request):
             fullName=full_name,
             email=email,
             role=role,
-            isActive=False  # New users are inactive by default
+            isActive=False  
         )
 
         # Return success with user data
@@ -65,7 +65,6 @@ def signup(request):
         }, status=201)
 
     except Exception as e:
-        # Log the error for debugging
         print(f"Signup error: {str(e)}")
         return Response({"error": f"Server error: {str(e)}"}, status=500)
 
@@ -84,8 +83,6 @@ def login_user(request):
         if not user:
             return Response({"error": "User not found"}, status=404)
 
-        # check hashed password
-        from django.contrib.auth.hashers import check_password
         if not check_password(password, user['password']):
             return Response({"message": "Invalid credentials"}, status=401)
 
@@ -94,12 +91,11 @@ def login_user(request):
             sql_user = User.objects.get(email=email)
             is_active = sql_user.isActive
         except User.DoesNotExist:
-            # If user exists in Mongo but not SQL, sync them now
             sql_user = User.objects.create(
                 fullName=user['fullName'],
                 email=user['email'],
                 role=user['role'],
-                isActive=True  # Existing users are active by default
+                isActive=True  
             )
             is_active = True
 
@@ -119,7 +115,6 @@ def login_user(request):
         })
 
     except Exception as e:
-        # Log the error for debugging
         print(f"Login error: {str(e)}")
         return Response({"error": f"Server error: {str(e)}"}, status=500)
 
@@ -137,13 +132,11 @@ def vehicles(request):
             else:
                 vehicles = list(vehicles_collection.find())
 
-            # Convert ObjectId to string for each vehicle
             for vehicle in vehicles:
                 vehicle['_id'] = str(vehicle['_id'])
                 if 'createdAt' in vehicle:
                     vehicle['createdAt'] = vehicle['createdAt'].isoformat() if isinstance(
                         vehicle['createdAt'], datetime) else vehicle['createdAt']
-                # Attach owner's name
                 try:
                     owner = users_collection.find_one({"_id": ObjectId(
                         vehicle.get('ownerId', ''))}) if vehicle.get('ownerId') else None
@@ -169,7 +162,7 @@ def vehicles(request):
             fuel_type = data.get('fuelType')
             transmission = data.get('transmission')
             pickup_location = data.get('pickupLocation')
-            image_base64 = data.get('imageBase64')  # optional vehicle photo
+            image_base64 = data.get('imageBase64')  
 
             if not all([owner_id, category, name, brand, model_year, price_per_day, pickup_location]):
                 return Response({"error": "All fields are required"}, status=400)
@@ -253,12 +246,10 @@ def bookings(request):
     if request.method == 'GET':
         try:
             if owner_id:
-                # Get all vehicles owned by this owner
                 owner_vehicles = list(
                     vehicles_collection.find({"ownerId": owner_id}))
                 vehicle_ids = [v['_id'] for v in owner_vehicles]
 
-                # Get bookings for these vehicles
                 bookings = list(bookings_collection.find(
                     {"vehicleId": {"$in": [str(v) for v in vehicle_ids]}}))
             elif renter_id:
@@ -267,7 +258,6 @@ def bookings(request):
             else:
                 bookings = list(bookings_collection.find())
 
-            # Convert ObjectId to string and attach vehicle image to each booking
             for booking in bookings:
                 booking['_id'] = str(booking['_id'])
                 if 'createdAt' in booking:
@@ -276,7 +266,6 @@ def bookings(request):
                     booking['startDate'] = booking['startDate'].isoformat()
                 if 'endDate' in booking:
                     booking['endDate'] = booking['endDate'].isoformat()
-                # Attach vehicle details
                 try:
                     vehicle = vehicles_collection.find_one(
                         {"_id": ObjectId(booking.get('vehicleId', ''))})
@@ -307,7 +296,6 @@ def bookings(request):
             if not all([vehicle_id, renter_id, start_date, end_date, total_price]):
                 return Response({"error": "All fields are required"}, status=400)
 
-            # Get vehicle details
             vehicle = vehicles_collection.find_one(
                 {"_id": ObjectId(vehicle_id)})
             if not vehicle:
@@ -321,7 +309,6 @@ def bookings(request):
             if existing_active:
                 return Response({"error": "You already have an active rental. Please complete or cancel your current rental first."}, status=400)
 
-            # Get renter details
             renter = users_collection.find_one({"_id": ObjectId(renter_id)})
 
             booking = {
@@ -392,6 +379,43 @@ def booking_detail(request, booking_id):
                 new_status = data['status']
                 update_data['status'] = new_status
 
+                # AUTO-REFUND LOGIC FOR EARLY RETURN/CANCEL
+                if new_status in ['completed', 'cancelled']:
+                    now = datetime.now(timezone.utc)
+                    
+                    start_date = booking['startDate']
+                    if isinstance(start_date, str):
+                        start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+
+                    end_date = booking['endDate']
+                    if isinstance(end_date, str):
+                        end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+
+                    total_price = booking.get('totalPrice', 0)
+                    
+                    rental_days = (end_date.date() - start_date.date()).days + 1
+                    
+                    if new_status == 'completed':  # Early return
+                        # Calculate actual used days (minimum 1 day)
+                        days_rented = (now.date() - start_date.date()).days + 1
+                        days_rented = max(1, min(days_rented, rental_days))
+                        price_per_day = total_price / rental_days
+                        used_amount = price_per_day * days_rented
+                        
+                        refund_ratio = total_price - used_amount
+                        refund_amount = booking.get('totalPrice', 0) * refund_ratio
+                    else:  # Cancellation
+                        if now < end_date - timedelta(hours=24):
+                            refund_ratio = 1.0  # Full refund >24h
+                        else:
+                            refund_ratio = 0.9  # 10% fee <24h
+                    
+                    update_data['refundAmount'] = refund_amount
+                    print("DEBUG →")
+                    print("Now:", now)
+                    print("Start:", start_date)
+                    print("Days Used:", days_used if new_status == 'completed' else "N/A")
+                    print("Refund:", refund_amount)
                 # Update vehicle availability
                 vehicle_doc = vehicles_collection.find_one(
                     {"_id": ObjectId(booking['vehicleId'])})
@@ -413,8 +437,8 @@ def booking_detail(request, booking_id):
                         notifications_collection.insert_one({
                             "userId": booking['renterId'],
                             "title": "Booking Update",
-                            "message": f"Your booking for {booking['vehicleName']} has been {new_status}.",
-                            "type": "success" if new_status == 'confirmed' else "error",
+                            "message": f"Your booking for {booking['vehicleName']} has been {new_status}. Refund: NPR {booking.get('refundAmount', 0):.0f}",
+                            "type": "success" if new_status == 'confirmed' else "info",
                             "isRead": False,
                             "createdAt": datetime.now()
                         })
@@ -437,7 +461,6 @@ def booking_detail(request, booking_id):
                 if field in booking and isinstance(booking[field], datetime):
                     booking[field] = booking[field].isoformat()
 
-            # Attach latest vehicle details
             try:
                 vehicle = vehicles_collection.find_one(
                     {"_id": ObjectId(booking.get('vehicleId', ''))})
@@ -461,21 +484,18 @@ def booking_detail(request, booking_id):
 
 @api_view(['GET'])
 def sync_users(request):
-    # \"\"\"Temporary view to sync all MongoDB users to the Django Admin panel\"\"\"
     try:    
         mongo_users = list(users_collection.find())
         synced_count = 0
         for m_user in mongo_users:
-            # Sync to SQL if missing
             if not User.objects.filter(email=m_user['email']).exists():
                 User.objects.create(
                     fullName=m_user.get('fullName', 'Unknown'),
                     email=m_user['email'],
                     role=m_user.get('role', 'renter'),
-                    isActive=True  # Existing users are set to active
+                    isActive=True  
                 )
 
-            # Ensure isActive exists in MongoDB
             if 'isActive' not in m_user:
                 users_collection.update_one(
                     {"email": m_user['email']},
@@ -520,3 +540,4 @@ def notifications(request):
             return Response({"error": "notification_id or user_id required"}, status=400)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
