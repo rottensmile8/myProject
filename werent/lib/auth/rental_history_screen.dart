@@ -258,7 +258,7 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 if (booking.status == 'pending' || booking.status == 'confirmed')
-                  _buildActionBtn(Icons.cancel_outlined, 'Cancel', Colors.red, () => _showCancelDialog(booking)),
+                   _buildActionBtn(Icons.cancel_outlined, 'Cancel', Colors.red, () => _showCancelDialog(booking)),
                 if (booking.status == 'confirmed')
                   _buildActionBtn(Icons.assignment_return_outlined, 'Return', Colors.green, () => _showReturnDialog(booking)),
                 if (booking.status == 'completed' || booking.status == 'cancelled')

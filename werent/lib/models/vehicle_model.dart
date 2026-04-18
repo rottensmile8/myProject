@@ -43,7 +43,9 @@ class Vehicle {
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
-      id: json['_id'] ?? '',
+      id: (json['_id'] is Map
+          ? (json['_id']['\$oid'] ?? '')
+          : (json['_id'] ?? '')), // 🐛 FIXED: MongoDB ObjectId parsing"
       ownerId: json['ownerId'] ?? '',
       category: json['category'] == 'bike'
           ? VehicleCategory.bike

@@ -19,7 +19,9 @@ class NotificationModel {
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: json['_id'] ?? '',
+      id: (json['_id'] is Map
+          ? (json['_id']['\$oid'] ?? '')
+          : (json['_id'] ?? '')), // 🐛 FIXED: MongoDB ObjectId parsing"
       userId: json['userId'] ?? '',
       title: json['title'] ?? '',
       message: json['message'] ?? '',

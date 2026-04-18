@@ -33,7 +33,9 @@ class Booking {
 
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
-      id: json['_id'] ?? '',
+      id: (json['_id'] is Map
+          ? (json['_id']['\$oid'] ?? '')
+          : (json['_id'] ?? '')), // 🐛 FIXED: MongoDB ObjectId parsing"
       vehicleId: json['vehicleId'] ?? '',
       vehicleName: json['vehicleName'] ?? '',
       vehicleCategory: json['vehicleCategory'] ?? '',

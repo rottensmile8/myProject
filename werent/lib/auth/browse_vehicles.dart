@@ -29,7 +29,7 @@ class _BrowseVehiclesScreenState extends State<BrowseVehiclesScreen> {
   bool _isLoading = true;
   VehicleCategory? _selectedCategory = VehicleCategory.car;
 
-  // Consistent Theme Palette
+  // Theme Palette
   static const Color primaryOrange = Color(0xFFFF8A00);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
   static const Color softOrangeBg = Color(0xFFFFF5E9);
@@ -603,7 +603,7 @@ Nepal jurisdiction applies.
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content:
-            Text(booking != null ? 'Booking processed!' : 'Booking failed'),
+            Text(booking != null ? 'Booking Successfull!' : 'Booking failed'),
         backgroundColor: booking != null ? Colors.green : Colors.red,
       ));
     }

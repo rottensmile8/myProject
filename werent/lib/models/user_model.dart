@@ -1,5 +1,3 @@
-
-
 enum UserRole {
   renter,
   owner,
@@ -26,7 +24,9 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['_id'] ?? '', // MongoDB _id
+      id: (json['_id'] is Map
+          ? (json['_id']['\$oid'] ?? '')
+          : (json['_id'] ?? '')), // 🐛 FIXED: MongoDB ObjectId parsing"
       fullName: json['fullName'],
       email: json['email'],
       role: json['role'] == 'owner' ? UserRole.owner : UserRole.renter,

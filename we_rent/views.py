@@ -46,7 +46,7 @@ def signup(request):
         result = users_collection.insert_one(user)
         user_id = str(result.inserted_id)
 
-        # ALSO create in Django SQL database for Admin Panel visibility
+        # create in Django SQL database for Admin Panel visibility
         User.objects.create(
             fullName=full_name,
             email=email,
@@ -334,7 +334,7 @@ def bookings(request):
                 "startDate": datetime.fromisoformat(start_date.replace('Z', '+00:00')),
                 "endDate": datetime.fromisoformat(end_date.replace('Z', '+00:00')),
                 "totalPrice": total_price,
-                "status": "pending",
+                "status": "confirmed",
                 "createdAt": datetime.now()
             }
 
@@ -343,6 +343,26 @@ def bookings(request):
             booking['createdAt'] = booking['createdAt'].isoformat()
             booking['startDate'] = booking['startDate'].isoformat()
             booking['endDate'] = booking['endDate'].isoformat()
+
+            # Mark vehicle unavailable immediately (instant confirmation)
+            vehicles_collection.update_one(
+                {"_id": ObjectId(vehicle_id)},
+                {"$set": {"isAvailable": False}}
+            )
+
+            # Owner notification
+            try:
+                owner_id = vehicle.get('ownerId')
+                notifications_collection.insert_one({
+                    "userId": str(owner_id),
+                    "title": "New Rental Confirmed",
+                    "message": f"{renter.get('fullName', 'Renter')} booked your {vehicle.get('name')} instantly",
+                    "type": "success",
+                    "isRead": False,
+                    "createdAt": datetime.now()
+                })
+            except:
+                pass
 
             return Response(booking, status=201)
         except Exception as e:
@@ -441,8 +461,8 @@ def booking_detail(request, booking_id):
 
 @api_view(['GET'])
 def sync_users(request):
-    """Temporary view to sync all MongoDB users to the Django Admin panel"""
-    try:
+    # \"\"\"Temporary view to sync all MongoDB users to the Django Admin panel\"\"\"
+    try:    
         mongo_users = list(users_collection.find())
         synced_count = 0
         for m_user in mongo_users:
