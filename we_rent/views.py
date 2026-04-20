@@ -411,10 +411,10 @@ def booking_detail(request, booking_id):
 
                 # Set customized messages
                 if new_status == 'completed':
-                    owner_title, owner_msg = "Vehicle Returned", f"Good news! {booking['renterName']} has returned your {vehicle_name}."
+                    owner_title, owner_msg = "Vehicle Returned", f"{booking['renterName']} has returned your {vehicle_name}. The vehicle is available for booking"
                     renter_title, renter_msg = "Return Successful", f"You have successfully returned the {vehicle_name}. Thank you!"
                 else: # cancelled
-                    owner_title, owner_msg = "Booking Cancelled", f"The booking for your {vehicle_name} was cancelled."
+                    owner_title, owner_msg = "Booking Cancelled", f"The booking for your {vehicle_name} was cancelled. The vehicle is available for booking"
                     renter_title, renter_msg = "Trip Cancelled", f"Your booking for {vehicle_name} has been cancelled."
 
                 # 4. SEND DUAL NOTIFICATIONS
@@ -470,30 +470,23 @@ def notifications(request):
 
     if request.method == 'GET':
         if not user_id:
-            return Response({"error": "user_id is required"}, status=400)
-
-        try:
-            notifications = list(notifications_collection.find(
-                {"userId": user_id}).sort("createdAt", -1))
-            for n in notifications:
-                n['_id'] = str(n['_id'])
-                if 'createdAt' in n:
-                    n['createdAt'] = n['createdAt'].isoformat() if isinstance(
-                        n['createdAt'], datetime) else n['createdAt']
-            return Response(notifications)
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+            return Response({"error": "user_id required"}, status=400)
+        notifs = list(notifications_collection.find({"userId": user_id}).sort("createdAt", -1))
+        for n in notifs:
+            n['_id'] = str(n['_id'])
+            if isinstance(n.get('createdAt'), datetime):
+                n['createdAt'] = n['createdAt'].isoformat()
+        return Response(notifs)
 
     elif request.method == 'DELETE':
         try:
             if notification_id:
-                notifications_collection.delete_one(
-                    {"_id": ObjectId(notification_id)})
-                return Response({"message": "Notification deleted"})
+                notifications_collection.delete_one({"_id": ObjectId(notification_id)})
+                return Response({"message": "Deleted notification"})
             elif user_id:
+                # Clear all for owner/renter
                 notifications_collection.delete_many({"userId": user_id})
-                return Response({"message": "All notifications cleared"})
-            return Response({"error": "notification_id or user_id required"}, status=400)
+                return Response({"message": "Cleared all notifications"})
+            return Response({"error": "Missing ID parameters"}, status=400)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
-

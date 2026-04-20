@@ -8,7 +8,7 @@ class KhaltiService {
       "https://dev.khalti.com/api/v2/epayment/initiate/";
 
   static Future<String?> createPayment({
-    required int amount, // paisa
+    required int amount, 
     required String orderId,
     required String orderName,
   }) async {
