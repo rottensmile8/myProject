@@ -153,13 +153,13 @@ class Vehicle {
       }
 
       debugPrint(
-          '🔍 Decoding image: ${mimeType ?? 'unknown'} (base64 len: ${cleanBase64.length})');
+          ' Decoding image: ${mimeType ?? 'unknown'} (base64 len: ${cleanBase64.length})');
 
       final bytes = base64Decode(cleanBase64);
 
       // Size validation (<2MB)
       if (bytes.length > 2 * 1024 * 1024) {
-        debugPrint('⚠️ Image too large: ${bytes.length} bytes (>2MB limit)');
+        debugPrint(' Image too large: ${bytes.length} bytes (>2MB limit)');
         return null;
       }
 
@@ -170,12 +170,12 @@ class Vehicle {
       }
 
       debugPrint(
-          '✅ Image decoded: ${bytes.length} bytes (${mimeType ?? 'unknown'})');
+          ' Image decoded: ${bytes.length} bytes (${mimeType ?? 'unknown'})');
       return bytes;
     } catch (e) {
       debugPrint('Base64 decode FAILED: $e');
       debugPrint(
-          '📄 Base64 preview: ${base64Str.length > 100 ? base64Str.substring(0, 100) + '...' : base64Str}');
+          ' Base64 preview: ${base64Str.length > 100 ? base64Str.substring(0, 100) + '...' : base64Str}');
       return null;
     }
   }

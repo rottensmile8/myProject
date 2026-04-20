@@ -389,46 +389,74 @@ class _RentalHistoryScreenState extends State<RentalHistoryScreen> {
         ],
       ),
     );
-    if (res == true) _updateStatus(booking.id, 'cancelled', refund);
+    if (res == true) _updateStatus(booking, 'cancelled', refund);
   }
 
   Future<void> _showReturnDialog(Booking booking) async {
-    final refund =
-        (booking.daysRemaining / booking.rentalDays) * booking.totalPrice;
-    final res = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Early Return?'),
-        content: Text(
-            'Refund for remaining ${booking.daysRemaining} days:\nNPR ${refund.toInt()}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Continue')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Return',
-                  style: TextStyle(
-                      color: Colors.green, fontWeight: FontWeight.bold))),
+  // Logic: Charge for today, refund only for the days AFTER today.
+  // If 4 days left, we refund 3.
+  int refundableDays = (booking.daysRemaining - 1).clamp(0, booking.rentalDays);
+  
+  final refund = (refundableDays / booking.rentalDays) * booking.totalPrice;
+
+  final res = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Return Vehicle?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('You are returning this today.'),
+          const SizedBox(height: 8),
+          Text('Remaining days: ${booking.daysRemaining}'),
+          Text('Refundable days: $refundableDays', 
+               style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+          const Divider(),
+          Text('Refund Amount: NPR ${refund.toInt()}',
+               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ],
       ),
-    );
-    if (res == true) _updateStatus(booking.id, 'completed', refund);
-  }
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep Rental')),
+        ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Confirm Return', style: TextStyle(color: Colors.white))),
+      ],
+    ),
+  );
 
-  Future<void> _updateStatus(String id, String status, double refund) async {
-    final success = await _bookingController.updateBookingStatus(id, status,
-        refundAmount: refund);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Status updated! Refund: NPR ${refund.toInt()}'),
-            backgroundColor: Colors.green),
-      );
-      _loadBookings();
-    }
+  if (res == true) _updateStatus(booking, 'completed', refund);
+}
+
+  Future<void> _updateStatus(
+    Booking booking, String status, double refund) async {
+  
+  // Call the controller with the refund amount
+  final success = await _bookingController
+      .updateBookingStatus(booking.id, status, refundAmount: refund);
+  
+  if (success && mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(
+              'Update successful! Refund: NPR ${refund.toInt()}'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating),
+    );
+    _loadBookings(); // Refresh the list
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Failed to update status. Please try again.'),
+          backgroundColor: Colors.red),
+    );
   }
+}
 
   Future<void> _confirmDelete(Booking booking) async {
     final res = await showDialog<bool>(

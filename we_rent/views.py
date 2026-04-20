@@ -375,112 +375,51 @@ def booking_detail(request, booking_id):
             data = request.data
             update_data = {}
 
+            # 1. Update Status and Manage Vehicle Availability
             if 'status' in data:
                 new_status = data['status']
                 update_data['status'] = new_status
 
-                # AUTO-REFUND LOGIC FOR EARLY RETURN/CANCEL
-                if new_status in ['completed', 'cancelled']:
-                    now = datetime.now(timezone.utc)
-                    
-                    start_date = booking['startDate']
-                    if isinstance(start_date, str):
-                        start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                # Toggle vehicle availability based on status
+                is_available = True if new_status in ['completed', 'cancelled'] else False
+                vehicles_collection.update_one(
+                    {"_id": ObjectId(booking['vehicleId'])},
+                    {"$set": {"isAvailable": is_available}}
+                )
 
-                    end_date = booking['endDate']
-                    if isinstance(end_date, str):
-                        end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-
-                    total_price = booking.get('totalPrice', 0)
-                    
-                    rental_days = (end_date.date() - start_date.date()).days + 1
-                    
-                    if new_status == 'completed':  # Early return
-                        # Calculate actual used days (minimum 1 day)
-                        days_rented = (now.date() - start_date.date()).days + 1
-                        days_rented = max(1, min(days_rented, rental_days))
-                        price_per_day = total_price / rental_days
-                        used_amount = price_per_day * days_rented
-                        
-                        refund_ratio = total_price - used_amount
-                        refund_amount = booking.get('totalPrice', 0) * refund_ratio
-                    else:  # Cancellation
-                        if now < end_date - timedelta(hours=24):
-                            refund_ratio = 1.0  # Full refund >24h
-                        else:
-                            refund_ratio = 0.9  # 10% fee <24h
-                    
-                    update_data['refundAmount'] = refund_amount
-                    print("DEBUG →")
-                    print("Now:", now)
-                    print("Start:", start_date)
-                    print("Days Used:", days_used if new_status == 'completed' else "N/A")
-                    print("Refund:", refund_amount)
-                # Update vehicle availability
-                vehicle_doc = vehicles_collection.find_one(
-                    {"_id": ObjectId(booking['vehicleId'])})
-                if vehicle_doc:
-                    if new_status == 'confirmed':
-                        vehicles_collection.update_one(
-                            {"_id": ObjectId(booking['vehicleId'])},
-                            {"$set": {"isAvailable": False}}
-                        )
-                    elif new_status in ['completed', 'cancelled']:
-                        vehicles_collection.update_one(
-                            {"_id": ObjectId(booking['vehicleId'])},
-                            {"$set": {"isAvailable": True}}
-                        )
-
-                # Create notification for renter
-                try:
-                    if new_status in ['confirmed', 'cancelled']:
-                        notifications_collection.insert_one({
-                            "userId": booking['renterId'],
-                            "title": "Booking Update",
-                            "message": f"Your booking for {booking['vehicleName']} has been {new_status}. Refund: NPR {booking.get('refundAmount', 0):.0f}",
-                            "type": "success" if new_status == 'confirmed' else "info",
-                            "isRead": False,
-                            "createdAt": datetime.now()
-                        })
-                except Exception as e:
-                    print(f"Notification error: {str(e)}")
-
+            # 2. Handle Refund Amount (sent from Flutter)
             if 'refundAmount' in data:
                 update_data['refundAmount'] = data['refundAmount']
 
+            # 3. Save Updates to MongoDB
             if update_data:
                 bookings_collection.update_one(
                     {"_id": ObjectId(booking_id)},
                     {"$set": update_data}
                 )
 
-            booking = bookings_collection.find_one(
-                {"_id": ObjectId(booking_id)})
-            booking['_id'] = str(booking['_id'])
-            for field in ['createdAt', 'startDate', 'endDate']:
-                if field in booking and isinstance(booking[field], datetime):
-                    booking[field] = booking[field].isoformat()
-
+            # 4. Notify Renter
             try:
-                vehicle = vehicles_collection.find_one(
-                    {"_id": ObjectId(booking.get('vehicleId', ''))})
-                if vehicle:
-                    booking['vehicleImageBase64'] = vehicle.get('imageBase64')
-                    booking['vehicleName'] = vehicle.get('name')
-                    booking['vehicleCategory'] = vehicle.get('category')
-            except Exception:
+                notifications_collection.insert_one({
+                    "userId": booking['renterId'],
+                    "title": "Trip Update",
+                    "message": f"Your trip for {booking.get('vehicleName')} is now {update_data.get('status')}.",
+                    "type": "info",
+                    "isRead": False,
+                    "createdAt": datetime.now()
+                })
+            except:
                 pass
 
-            return Response(booking)
+            return Response({"message": "Update successful", "status": update_data.get('status')})
 
         elif request.method == 'DELETE':
             bookings_collection.delete_one({"_id": ObjectId(booking_id)})
             return Response({"message": "Booking deleted successfully"})
 
     except Exception as e:
-        print(f"Booking detail error: {str(e)}")
-        return Response({"error": f"Server error: {str(e)}"}, status=500)
-
+        print(f"Error in booking_detail: {str(e)}")
+        return Response({"error": "Internal Server Error"}, status=500)
 
 @api_view(['GET'])
 def sync_users(request):

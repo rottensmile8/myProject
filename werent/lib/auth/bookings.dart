@@ -381,4 +381,5 @@ class _BookingsScreenState extends State<BookingsScreen> {
       _loadBookings();
     }
   }
+
 }
