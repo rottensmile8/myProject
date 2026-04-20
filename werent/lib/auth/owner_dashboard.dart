@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/models/vehicle_model.dart';
 import 'package:werent/models/booking_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
 import 'package:werent/controllers/booking_controller.dart';
 import 'package:werent/controllers/vehicle_controller.dart';
+import 'package:werent/controllers/notification_controller.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
   final User user;
@@ -28,7 +30,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   List<Vehicle> _vehicles = [];
   bool _analyticsLoading = true;
 
-  // Theme Colors
+  // Theme Palette (Matching Renter Style)
   static const Color primaryOrange = Color(0xFFFF8A00);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
   static const Color softOrangeBg = Color(0xFFFFF5E9);
@@ -39,32 +41,37 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   void initState() {
     super.initState();
     _loadAnalytics();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<NotificationController>(context, listen: false)
+            .getNotifications(widget.user.id);
+      }
+    });
   }
 
   Future<void> _loadAnalytics() async {
     setState(() => _analyticsLoading = true);
-    final results = await Future.wait([
-      _bookingController.getOwnerBookings(widget.user.id),
-      _vehicleController.getOwnerVehicles(widget.user.id),
-    ]);
-    if (mounted) {
-      setState(() {
-        _bookings = results[0] as List<Booking>;
-        _vehicles = results[1] as List<Vehicle>;
-        _analyticsLoading = false;
-      });
+    try {
+      final results = await Future.wait([
+        _bookingController.getOwnerBookings(widget.user.id),
+        _vehicleController.getOwnerVehicles(widget.user.id),
+      ]);
+      if (mounted) {
+        setState(() {
+          _bookings = results[0] as List<Booking>;
+          _vehicles = results[1] as List<Vehicle>;
+          _analyticsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _analyticsLoading = false);
     }
   }
 
-  // analytics
-  int get _totalVehicles => _vehicles.length;
   double get _totalEarnings => _bookings
       .where((b) => b.status == 'confirmed' || b.status == 'completed')
       .fold(0.0, (sum, b) => sum + b.totalPrice);
-  int get _activeBookings => _bookings.where((b) => b.status == 'confirmed').length;
-  int get _totalCustomers => _bookings.map((b) => b.renterId).toSet().length;
-  int get _pendingBookingsCount => _bookings.where((b) => b.status == 'pending').length;
-  List<Booking> get _pendingBookings => _bookings.where((b) => b.status == 'pending').toList();
 
   @override
   Widget build(BuildContext context) {
@@ -73,12 +80,15 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       appBar: AppBar(
         backgroundColor: surfaceWhite,
         elevation: 0,
-        title: const Text('Dashboard', style: TextStyle(color: darkText, fontWeight: FontWeight.bold)),
+        title: const Text('Dashboard', 
+            style: TextStyle(color: darkText, fontWeight: FontWeight.bold, fontSize: 22)),
         actions: [
+          _buildNotificationIcon(),
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: primaryOrange),
+            icon: const Icon(Icons.logout_rounded, color: primaryOrange, size: 28),
             onPressed: _handleLogout,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
@@ -86,108 +96,89 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         color: primaryOrange,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-               if (!widget.user.isActive) _buildApprovalPendingBanner(),
-               _buildProfileHeader(context),
-               const SizedBox(height: 30),
-                _buildStatsGrid(),
-                const SizedBox(height: 30),
-                //const Text("Management", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkText)),
-                const SizedBox(height: 16),
-               _buildQuickActions(context),
-               const SizedBox(height: 20),
-               _buildMenuCard(),
-               const SizedBox(height: 30),
-             ],
+              if (!widget.user.isActive) _buildApprovalPendingBanner(),
+              _buildProfileHeader(),
+              const SizedBox(height: 30),
+              _buildStatsGrid(),
+              const SizedBox(height: 35),
+              const Text("Management", 
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkText)),
+              const SizedBox(height: 20),
+              _buildQuickActions(context),
+              const SizedBox(height: 25),
+              _buildMenuCard(),
+              const SizedBox(height: 40),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildApprovalPendingBanner() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.amber.shade50,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.amber.shade200),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.privacy_tip_outlined, color: Colors.amber),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Account review in progress. You can manage your vehicles once approved by the Admin.',
-              style: TextStyle(fontSize: 13, color: Colors.amber.shade900, fontWeight: FontWeight.w500),
+  Widget _buildNotificationIcon() {
+    return Consumer<NotificationController>(
+      builder: (context, controller, child) {
+        return GestureDetector(
+          onTap: () => _showNotificationsModal(context, controller),
+          child: Container(
+            width: 50, // Slightly larger
+            height: 50,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: softOrangeBg, borderRadius: BorderRadius.circular(15)),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_none_rounded, color: primaryOrange, size: 26),
+                if (controller.unreadCount > 0)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      child: Text(
+                        '${controller.unreadCount}',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildProfileHeader(BuildContext context) {
+  Widget _buildProfileHeader() {
     return Row(
       children: [
-        GestureDetector(
-          onTap: () => _showAnalyticsModal(context),
-          child: Container(
-            padding: const EdgeInsets.all(3),
-            decoration: const BoxDecoration(color: primaryOrange, shape: BoxShape.circle),
-            child: CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.white,
-              child: Text(
-                widget.user.fullName[0].toUpperCase(),
-                style: const TextStyle(fontSize: 24, color: primaryOrange, fontWeight: FontWeight.bold),
-              ),
-            ),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: const BoxDecoration(color: primaryOrange, shape: BoxShape.circle),
+          child: CircleAvatar(
+            radius: 32, // Larger avatar
+            backgroundColor: Colors.white,
+            child: Text(widget.user.fullName[0].toUpperCase(), 
+                style: const TextStyle(color: primaryOrange, fontSize: 24, fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome back,', style: TextStyle(color: lightText, fontSize: 14)),
-            Text(widget.user.fullName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkText)),
+            const Text('Welcome back,', style: TextStyle(color: lightText, fontSize: 14)),
+            Text(widget.user.fullName, 
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkText)),
           ],
         ),
-        const Spacer(),
-        _buildNotificationIcon(),
       ],
-    );
-  }
-
-  Widget _buildNotificationIcon() {
-    return GestureDetector(
-      onTap: () => _showNotificationsModal(context),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: softOrangeBg, borderRadius: BorderRadius.circular(12)),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const Icon(Icons.notifications_none_rounded, color: primaryOrange),
-            if (_pendingBookingsCount > 0)
-              Positioned(
-                right: -2,
-                top: -2,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                  child: Text('$_pendingBookingsCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -196,7 +187,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       children: [
         _buildStatCard("Earnings", "NPR ${_totalEarnings.toInt()}", Icons.account_balance_wallet_outlined),
         const SizedBox(width: 16),
-        _buildStatCard("Vehicles", "$_totalVehicles", Icons.directions_car_outlined),
+        _buildStatCard("Vehicles", "${_vehicles.length}", Icons.directions_car_outlined),
       ],
     );
   }
@@ -204,18 +195,21 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   Widget _buildStatCard(String label, String value, IconData icon) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22), // More padding
         decoration: BoxDecoration(
-          color: softOrangeBg,
-          borderRadius: BorderRadius.circular(20),
+          color: softOrangeBg, 
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(color: primaryOrange.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+          ]
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: primaryOrange, size: 28),
-            const SizedBox(height: 16),
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText)),
-            Text(label, style: const TextStyle(fontSize: 13, color: lightText)),
+            Icon(icon, color: primaryOrange, size: 30),
+            const SizedBox(height: 18),
+            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkText)),
+            Text(label, style: const TextStyle(fontSize: 14, color: lightText)),
           ],
         ),
       ),
@@ -225,26 +219,14 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   Widget _buildQuickActions(BuildContext context) {
     return Column(
       children: [
-        _buildActionTile(
-          "Add Vehicle",
-          "List a new ride",
-          Icons.add_rounded,
-          () => Navigator.pushNamed(context, '/owner/add-vehicle', arguments: widget.user),
-        ),
-        const SizedBox(height: 12),
-        _buildActionTile(
-          "My Vehicles",
-          "Manage listed vehicles",
-          Icons.garage_outlined,
-          () => Navigator.pushNamed(context, '/owner/my-vehicles', arguments: widget.user),
-        ),
-        const SizedBox(height: 12),
-        _buildActionTile(
-          "Bookings",
-          "Check rental status",
-          Icons.calendar_month_outlined,
-          () => Navigator.pushNamed(context, '/owner/bookings', arguments: widget.user),
-        ),
+        _buildActionTile("Add Vehicle", "List a new ride to start earning", Icons.add_rounded, 
+            () => Navigator.pushNamed(context, '/owner/add-vehicle', arguments: widget.user)),
+        const SizedBox(height: 16),
+        _buildActionTile("My Vehicles", "Manage and edit your listed fleet", Icons.garage_outlined, 
+            () => Navigator.pushNamed(context, '/owner/my-vehicles', arguments: widget.user)),
+        const SizedBox(height: 16),
+        _buildActionTile("Bookings", "View active and past rental history", Icons.calendar_month_outlined, 
+            () => Navigator.pushNamed(context, '/owner/bookings', arguments: widget.user)),
       ],
     );
   }
@@ -253,30 +235,34 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20), // Larger click area
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF0F0F0), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))
+          ]
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: softOrangeBg, borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: primaryOrange),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: softOrangeBg, borderRadius: BorderRadius.circular(15)),
+              child: Icon(icon, color: primaryOrange, size: 26),
             ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: darkText)),
-                Text(sub, style: const TextStyle(fontSize: 12, color: lightText)),
-              ],
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkText)),
+                  const SizedBox(height: 2),
+                  Text(sub, style: const TextStyle(fontSize: 13, color: lightText)),
+                ],
+              ),
             ),
-            const Spacer(),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.black26),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.black26),
           ],
         ),
       ),
@@ -286,13 +272,13 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   Widget _buildMenuCard() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F9F9),
-        borderRadius: BorderRadius.circular(18),
+        color: const Color(0xFFF9F9F9), 
+        borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
         children: [
           _buildSimpleMenuItem("Settings", Icons.settings_outlined, () {}),
-          Divider(height: 1, color: Colors.grey.shade200, indent: 50),
+          Divider(height: 1, color: Colors.grey.shade200, indent: 60),
           _buildSimpleMenuItem("Help Center", Icons.help_outline_rounded, () {}),
         ],
       ),
@@ -301,15 +287,15 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
 
   Widget _buildSimpleMenuItem(String title, IconData icon, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: darkText, size: 22),
-      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: darkText)),
-      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      leading: Icon(icon, color: darkText, size: 24),
+      title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: darkText)),
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
       onTap: onTap,
     );
   }
 
-  // Same logic as before but with the new Orange/White Modal theme
-  void _showNotificationsModal(BuildContext context) {
+  void _showNotificationsModal(BuildContext context, NotificationController controller) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -324,17 +310,39 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
-            const SizedBox(height: 20),
-            const Text("Pending Requests", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkText)),
+            Center(child: Container(width: 45, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+            const SizedBox(height: 25),
+            const Text("Notifications", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: darkText)),
             const SizedBox(height: 20),
             Expanded(
-              child: _pendingBookings.isEmpty 
-                ? const Center(child: Text("No new requests", style: TextStyle(color: lightText)))
-                : ListView.builder(
-                    itemCount: _pendingBookings.length,
-                    itemBuilder: (context, i) => _buildRequestCard(_pendingBookings[i]),
-                  ),
+              child: controller.notifications.isEmpty
+                  ? const Center(child: Text("No notifications yet", style: TextStyle(color: lightText, fontSize: 16)))
+                  : ListView.builder(
+                      itemCount: controller.notifications.length,
+                      itemBuilder: (context, index) {
+                        final n = controller.notifications[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 15),
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: softOrangeBg,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const CircleAvatar(
+                              backgroundColor: primaryOrange,
+                              child: Icon(Icons.notifications_active, color: Colors.white, size: 20),
+                            ),
+                            title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(n.message, style: const TextStyle(fontSize: 14)),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -342,85 +350,47 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     );
   }
 
-  Widget _buildRequestCard(Booking booking) {
+  Widget _buildApprovalPendingBanner() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 25),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: softOrangeBg,
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.amber.shade50, 
+        borderRadius: BorderRadius.circular(18), 
+        border: Border.all(color: Colors.amber.shade200, width: 1.5)
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.pending_actions_rounded, color: primaryOrange),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(booking.vehicleName, style: const TextStyle(fontWeight: FontWeight.bold, color: darkText)),
-                    Text("By ${booking.renterName}", style: const TextStyle(fontSize: 12, color: lightText)),
-                  ],
-                ),
-              ),
-              Text("NPR ${booking.totalPrice.toInt()}", style: const TextStyle(fontWeight: FontWeight.bold, color: primaryOrange)),
-            ],
+          const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+          const SizedBox(width: 15),
+          const Expanded(
+            child: Text("Pending admin approval to list vehicles. You will be notified once active.", 
+              style: TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500))
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => _updateStatus(booking.id, 'cancelled'),
-                  child: const Text("Reject", style: TextStyle(color: Colors.red)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _updateStatus(booking.id, 'confirmed'),
-                  style: ElevatedButton.styleFrom(backgroundColor: primaryOrange, elevation: 0),
-                  child: const Text("Approve", style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
-          )
         ],
       ),
     );
-  }
-
-  Future<void> _updateStatus(String id, String status) async {
-    final success = await _bookingController.updateBookingStatus(id, status);
-    if (success) {
-      _loadAnalytics();
-      Navigator.pop(context);
-    }
   }
 
   void _handleLogout() async {
-    final bool? confirm = await showDialog(
+    final res = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Logout"),
-        content: const Text("Finish your session?"),
+        content: const Text("Are you sure you want to end your session?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Stay")),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Logout", style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text("Logout", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+          ),
         ],
       ),
     );
-    if (confirm == true) {
+    if (res == true) {
       await widget.authController.logout();
       if (mounted) Navigator.pushReplacementNamed(context, '/auth');
     }
-  }
-
-  // Placeholder for the chart/analytics modal
-  void _showAnalyticsModal(BuildContext context) {
-    _loadAnalytics();
-    // Implementation of stats breakdown...
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:werent/auth/login_screen.dart';
 import 'package:werent/auth/signup_screen.dart';
 import 'package:werent/auth/renter_dashboard.dart';
@@ -9,11 +10,27 @@ import 'package:werent/auth/bookings.dart';
 import 'package:werent/auth/browse_vehicles.dart';
 import 'package:werent/auth/rental_history_screen.dart';
 import 'package:werent/auth/saved_vehicles_screen.dart';
+import 'package:werent/controllers/booking_controller.dart';
+import 'package:werent/controllers/notification_controller.dart';
+import 'package:werent/controllers/vehicle_controller.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
 
 void main() {
-  runApp(const MyApp());
+  // Required for plugin initialization
+  WidgetsFlutterBinding.ensureInitialized();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthController()),
+        ChangeNotifierProvider(create: (_) => BookingController()),
+        ChangeNotifierProvider(create: (_) => VehicleController()),
+        ChangeNotifierProvider(create: (_) => NotificationController()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

@@ -7,7 +7,6 @@ import 'dart:typed_data';
 
 class BookingsScreen extends StatefulWidget {
   final User user;
-
   const BookingsScreen({super.key, required this.user});
 
   @override
@@ -19,7 +18,6 @@ class _BookingsScreenState extends State<BookingsScreen> {
   List<Booking> _bookings = [];
   bool _isLoading = true;
 
-  // Theme Palette
   static const Color primaryOrange = Color(0xFFFF8A00);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
   static const Color softOrangeBg = Color(0xFFFFF5E9);
@@ -52,8 +50,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'confirmed':
+      case 'in rent':
         return Colors.green;
       case 'completed':
         return Colors.blue;
@@ -93,29 +92,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.book_online_outlined, size: 80, color: softOrangeBg),
-          const SizedBox(height: 16),
-          const Text('No bookings yet',
-              style: TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.bold, color: darkText)),
-          const SizedBox(height: 8),
-          const Text('Rental requests will appear here',
-              style: TextStyle(color: lightText)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBookingList() {
-    // final pending = _bookings.where((b) => b.status == 'pending').toList();
-    final confirmed = _bookings.where((b) => b.status == 'In Rent').toList();
-    final completed = _bookings.where((b) => b.status == 'completed').toList();
-    final cancelled = _bookings.where((b) => b.status == 'cancelled').toList();
+    final confirmed = _bookings
+        .where((b) =>
+            b.status.toLowerCase() == 'confirmed' ||
+            b.status.toLowerCase() == 'in rent')
+        .toList();
+    final completed =
+        _bookings.where((b) => b.status.toLowerCase() == 'completed').toList();
+    final cancelled =
+        _bookings.where((b) => b.status.toLowerCase() == 'cancelled').toList();
 
     return RefreshIndicator(
       onRefresh: _loadBookings,
@@ -123,17 +109,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         children: [
-          // if (pending.isNotEmpty) ...[_buildSectionHeader('Pending', pending.length), ...pending.map(_buildBookingCard)],
           if (confirmed.isNotEmpty) ...[
-            _buildSectionHeader('In Rent', confirmed.length),
+            _buildSectionHeader('In Rent', confirmed.length, Colors.green),
             ...confirmed.map(_buildBookingCard)
           ],
           if (completed.isNotEmpty) ...[
-            _buildSectionHeader('Completed', completed.length),
+            _buildSectionHeader('Completed', completed.length, Colors.blue),
             ...completed.map(_buildBookingCard)
           ],
           if (cancelled.isNotEmpty) ...[
-            _buildSectionHeader('Cancelled', cancelled.length),
+            _buildSectionHeader('Cancelled', cancelled.length, Colors.red),
             ...cancelled.map(_buildBookingCard)
           ],
         ],
@@ -141,24 +126,23 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, int count) {
+  Widget _buildSectionHeader(String title, int count, Color color) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16, top: 12),
+      padding: const EdgeInsets.only(bottom: 12, top: 12),
       child: Row(
         children: [
           Text(title,
               style: const TextStyle(
                   fontSize: 18, fontWeight: FontWeight.bold, color: darkText)),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             decoration: BoxDecoration(
-                color: softOrangeBg, borderRadius: BorderRadius.circular(12)),
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12)),
             child: Text('$count',
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: primaryOrange,
-                    fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    fontSize: 12, color: color, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -176,15 +160,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
         ],
       ),
       child: Column(
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -197,9 +179,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     borderRadius: BorderRadius.circular(12),
                     image: imageBytes != null
                         ? DecorationImage(
-                            image: MemoryImage(imageBytes),
-                            fit: BoxFit.cover,
-                          )
+                            image: MemoryImage(imageBytes), fit: BoxFit.cover)
                         : null,
                   ),
                   child: imageBytes == null
@@ -207,8 +187,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           booking.vehicleCategory == 'bike'
                               ? Icons.two_wheeler
                               : Icons.directions_car,
-                          color: primaryOrange,
-                        )
+                          color: primaryOrange)
                       : null,
                 ),
                 const SizedBox(width: 12),
@@ -216,18 +195,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        booking.vehicleName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: darkText,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        "ID: #${booking.id.substring(0, 6).toUpperCase()}",
-                        style: const TextStyle(fontSize: 11, color: lightText),
-                      ),
+                      Text(booking.vehicleName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: darkText,
+                              fontSize: 16)),
+                      Text("ID: #${booking.id.substring(0, 6).toUpperCase()}",
+                          style:
+                              const TextStyle(fontSize: 11, color: lightText)),
                     ],
                   ),
                 ),
@@ -235,114 +210,69 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    booking.statusDisplay,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
-                  ),
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Text(booking.statusDisplay,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor)),
                 ),
               ],
             ),
           ),
-
-          // Details
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
                 _buildInfoRow(Icons.person_outline, booking.renterName),
                 const SizedBox(height: 8),
-                _buildInfoRow(
-                  Icons.calendar_month_outlined,
-                  "${booking.dateRangeDisplay} (${booking.rentalDays} days)",
-                ),
+                _buildInfoRow(Icons.calendar_month_outlined,
+                    "${booking.dateRangeDisplay} (${booking.rentalDays} days)"),
                 const SizedBox(height: 16),
-
-                // Earnings Bar
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      color: const Color(0xFFFAFAFA),
+                      borderRadius: BorderRadius.circular(12)),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "Earnings",
-                        style: TextStyle(
-                          color: lightText,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        "NPR ${booking.totalPrice.toInt()}",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: darkText,
-                        ),
-                      ),
+                      const Text("Earnings",
+                          style: TextStyle(color: lightText, fontSize: 13)),
+                      Text("NPR ${booking.totalPrice.toInt()}",
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: darkText)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 12),
 
-          const SizedBox(height: 16),
-
-          // Actions
-          if (booking.status == 'pending')
+          // Action Buttons: Delete for Completed/Cancelled
+          if (booking.status.toLowerCase() == 'completed' ||
+              booking.status.toLowerCase() == 'cancelled')
             Container(
               decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: Color(0xFFF5F5F5)),
+                  border: Border(top: BorderSide(color: Color(0xFFF5F5F5)))),
+              child: SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () => _confirmDelete(booking),
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      size: 18, color: Colors.redAccent),
+                  label: const Text("Delete Record",
+                      style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold)),
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => _updateBooking(booking.id, 'cancelled'),
-                      child: const Text(
-                        "Reject",
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 30,
-                    color: const Color(0xFFF5F5F5),
-                  ),
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => _updateBooking(booking.id, 'confirmed'),
-                      child: const Text(
-                        "Confirm",
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
-
-          if (booking.status != 'pending') const SizedBox(height: 4),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -360,26 +290,59 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  Uint8List? _decodeBase64Image(String base64) {
+  Uint8List? _decodeBase64Image(String? base64) {
+    if (base64 == null || base64.isEmpty) return null;
     try {
-      String s = base64.contains(',') ? base64.split(',')[1] : base64;
-      return base64Decode(s);
+      String cleanBase64 = base64;
+      if (base64.contains(',')) {
+        final parts = base64.split(',');
+        cleanBase64 = parts.length > 1 ? parts[1] : base64;
+      }
+      return base64Decode(cleanBase64);
     } catch (e) {
+      print('Base64 decode error: $e');
       return null;
     }
   }
 
-  Future<void> _updateBooking(String id, String status) async {
-    final success = await _bookingController.updateBookingStatus(id, status);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Booking ${status == 'Completed' ? 'In Rent' : 'cancelled'}'),
-            backgroundColor: darkText),
-      );
-      _loadBookings();
+  Future<void> _confirmDelete(Booking booking) async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Record'),
+        content: const Text('Remove this from history?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (res == true) {
+      final success = await _bookingController.deleteBooking(booking.id);
+      if (success && mounted) {
+        _loadBookings();
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Record deleted')));
+      }
     }
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.book_online_outlined, size: 80, color: softOrangeBg),
+          const SizedBox(height: 16),
+          const Text('No bookings yet',
+              style: TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold, color: darkText)),
+        ],
+      ),
+    );
+  }
 }

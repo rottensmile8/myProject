@@ -223,12 +223,20 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(vehicle.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText)),
-                    Text("NPR ${vehicle.pricePerDayNPR}", style: const TextStyle(fontWeight: FontWeight.bold, color: primaryOrange)),
-                  ],
-                ),
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    Expanded( 
+      child: Text(
+        vehicle.name, 
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText),
+        overflow: TextOverflow.ellipsis, 
+        maxLines: 1,
+      ),
+    ),
+    const SizedBox(width: 8), 
+    Text("NPR ${vehicle.pricePerDayNPR}", style: const TextStyle(fontWeight: FontWeight.bold, color: primaryOrange)),
+  ],
+),
                 Text("${vehicle.brand} • ${vehicle.modelYear}", style: const TextStyle(fontSize: 13, color: lightText)),
                 const SizedBox(height: 12),
                 Row(

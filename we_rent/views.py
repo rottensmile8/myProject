@@ -238,6 +238,12 @@ def vehicle_detail(request, vehicle_id):
 
 
 # Booking APIs
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from bson import ObjectId
+from datetime import datetime, timezone
+from db.mongodb import vehicles_collection, bookings_collection, notifications_collection, users_collection
+
 @api_view(['GET', 'POST'])
 def bookings(request):
     owner_id = request.query_params.get('owner_id')
@@ -245,118 +251,130 @@ def bookings(request):
 
     if request.method == 'GET':
         try:
+            # Determine filter
             if owner_id:
-                owner_vehicles = list(
-                    vehicles_collection.find({"ownerId": owner_id}))
-                vehicle_ids = [v['_id'] for v in owner_vehicles]
-
-                bookings = list(bookings_collection.find(
-                    {"vehicleId": {"$in": [str(v) for v in vehicle_ids]}}))
+                # Find all vehicles owned by this user first
+                owner_vehicles = list(vehicles_collection.find({"ownerId": owner_id}))
+                vehicle_ids = [str(v['_id']) for v in owner_vehicles]
+                query = {"vehicleId": {"$in": vehicle_ids}}
             elif renter_id:
-                bookings = list(bookings_collection.find(
-                    {"renterId": renter_id}))
+                query = {"renterId": renter_id}
             else:
-                bookings = list(bookings_collection.find())
+                query = {}
 
-            for booking in bookings:
+            bookings_list = list(bookings_collection.find(query).sort("createdAt", -1))
+
+            for booking in bookings_list:
                 booking['_id'] = str(booking['_id'])
-                if 'createdAt' in booking:
-                    booking['createdAt'] = booking['createdAt'].isoformat()
-                if 'startDate' in booking:
-                    booking['startDate'] = booking['startDate'].isoformat()
-                if 'endDate' in booking:
-                    booking['endDate'] = booking['endDate'].isoformat()
-                try:
-                    vehicle = vehicles_collection.find_one(
-                        {"_id": ObjectId(booking.get('vehicleId', ''))})
-                    if vehicle:
-                        booking['vehicleImageBase64'] = vehicle.get(
-                            'imageBase64')
-                        booking['vehicleName'] = vehicle.get('name')
-                        booking['vehicleCategory'] = vehicle.get('category')
-                    else:
-                        booking['vehicleImageBase64'] = None
-                except Exception:
-                    booking['vehicleImageBase64'] = None
+                
+                # IMPORTANT: Fetch the vehicle details to get the image
+                vehicle = vehicles_collection.find_one({"_id": ObjectId(booking['vehicleId'])})
+                if vehicle:
+                    # Explicitly map the image and other metadata
+                    booking['vehicleImageBase64'] = vehicle.get('imageBase64', "")
+                    booking['vehicleName'] = vehicle.get('name', "Unknown Vehicle")
+                    booking['vehicleCategory'] = vehicle.get('category', "car")
+                
+                # Format dates for Flutter
+                for date_field in ['createdAt', 'startDate', 'endDate']:
+                    if date_field in booking and isinstance(booking[date_field], datetime):
+                        booking[date_field] = booking[date_field].isoformat()
 
-            return Response(bookings)
+            return Response(bookings_list)
         except Exception as e:
-            print(f"Get bookings error: {str(e)}")
-            return Response({"error": f"Server error: {str(e)}"}, status=500)
+            return Response({"error": str(e)}, status=500)
 
     elif request.method == 'POST':
         try:
             data = request.data
             vehicle_id = data.get('vehicleId')
             renter_id = data.get('renterId')
-            start_date = data.get('startDate')
-            end_date = data.get('endDate')
             total_price = data.get('totalPrice')
 
-            if not all([vehicle_id, renter_id, start_date, end_date, total_price]):
-                return Response({"error": "All fields are required"}, status=400)
-
-            vehicle = vehicles_collection.find_one(
-                {"_id": ObjectId(vehicle_id)})
-            if not vehicle:
-                return Response({"error": "Vehicle not found"}, status=404)
-
-            # Check if renter has existing active rental
-            existing_active = bookings_collection.find_one({
-                "renterId": renter_id,
-                "status": "confirmed"
-            })
-            if existing_active:
-                return Response({"error": "You already have an active rental. Please complete or cancel your current rental first."}, status=400)
-
+            vehicle = vehicles_collection.find_one({"_id": ObjectId(vehicle_id)})
             renter = users_collection.find_one({"_id": ObjectId(renter_id)})
 
+            if not vehicle or not renter:
+                return Response({"error": "Vehicle or User not found"}, status=404)
+
+            # Create Booking
             booking = {
                 "vehicleId": vehicle_id,
-                "vehicleName": vehicle.get('name', ''),
-                "vehicleCategory": vehicle.get('category', 'car'),
+                "vehicleName": vehicle.get('name'),
+                "vehicleCategory": vehicle.get('category'),
                 "renterId": renter_id,
-                "renterName": renter.get('fullName', '') if renter else '',
-                "renterEmail": renter.get('email', '') if renter else '',
-                "startDate": datetime.fromisoformat(start_date.replace('Z', '+00:00')),
-                "endDate": datetime.fromisoformat(end_date.replace('Z', '+00:00')),
+                "renterName": renter.get('fullName'),
+                "startDate": datetime.fromisoformat(data['startDate'].replace('Z', '+00:00')),
+                "endDate": datetime.fromisoformat(data['endDate'].replace('Z', '+00:00')),
                 "totalPrice": total_price,
                 "status": "confirmed",
                 "createdAt": datetime.now()
             }
 
             result = bookings_collection.insert_one(booking)
-            booking['_id'] = str(result.inserted_id)
-            booking['createdAt'] = booking['createdAt'].isoformat()
-            booking['startDate'] = booking['startDate'].isoformat()
-            booking['endDate'] = booking['endDate'].isoformat()
-
-            # Mark vehicle unavailable immediately (instant confirmation)
+            
+            # Update Vehicle availability
             vehicles_collection.update_one(
                 {"_id": ObjectId(vehicle_id)},
                 {"$set": {"isAvailable": False}}
             )
 
-            # Owner notification
-            try:
-                owner_id = vehicle.get('ownerId')
-                notifications_collection.insert_one({
-                    "userId": str(owner_id),
-                    "title": "New Rental Confirmed",
-                    "message": f"{renter.get('fullName', 'Renter')} booked your {vehicle.get('name')} instantly",
-                    "type": "success",
-                    "isRead": False,
-                    "createdAt": datetime.now()
-                })
-            except:
-                pass
+            # --- DUAL NOTIFICATIONS ---
+            # To Owner
+            notifications_collection.insert_one({
+                "userId": vehicle['ownerId'],
+                "title": "New Booking",
+                "message": f"{renter['fullName']} rented your {vehicle['name']}.",
+                "type": "success", "isRead": False, "createdAt": datetime.now()
+            })
+            # To Renter
+            notifications_collection.insert_one({
+                "userId": renter_id,
+                "title": "Booking Confirmed",
+                "message": f"You've successfully rented {vehicle['name']}.",
+                "type": "info", "isRead": False, "createdAt": datetime.now()
+            })
 
-            return Response(booking, status=201)
+            return Response({"message": "Booked successfully", "id": str(result.inserted_id)}, status=201)
         except Exception as e:
-            print(f"Add booking error: {str(e)}")
-            return Response({"error": f"Server error: {str(e)}"}, status=500)
+            return Response({"error": str(e)}, status=500)
 
+# @api_view(['PUT', 'DELETE'])
+# def booking_detail(request, booking_id):
+#     try:
+#         booking = bookings_collection.find_one({"_id": ObjectId(booking_id)})
+#         if not booking: return Response({"error": "Not found"}, status=404)
 
+#         if request.method == 'PUT':
+#             data = request.data
+#             update_data = {}
+
+#             if 'status' in data:
+#                 new_status = data['status']
+#                 update_data['status'] = new_status
+                
+#                 # Make vehicle available if trip ends
+#                 if new_status in ['completed', 'cancelled']:
+#                     vehicles_collection.update_one(
+#                         {"_id": ObjectId(booking['vehicleId'])},
+#                         {"$set": {"isAvailable": True}}
+#                     )
+
+#             if 'refundAmount' in data:
+#                 update_data['refundAmount'] = float(data['refundAmount'])
+
+#             bookings_collection.update_one({"_id": ObjectId(booking_id)}, {"$set": update_data})
+#             return Response({"message": "Updated"})
+
+#         elif request.method == 'DELETE':
+#             bookings_collection.delete_one({"_id": ObjectId(booking_id)})
+#             return Response({"message": "Deleted"})
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=500)
+
+# Django views.py
+# Django views.py
 @api_view(['GET', 'PUT', 'DELETE'])
 def booking_detail(request, booking_id):
     try:
@@ -364,63 +382,62 @@ def booking_detail(request, booking_id):
         if not booking:
             return Response({"error": "Booking not found"}, status=404)
 
-        if request.method == 'GET':
-            booking['_id'] = str(booking['_id'])
-            for field in ['createdAt', 'startDate', 'endDate']:
-                if field in booking and isinstance(booking[field], datetime):
-                    booking[field] = booking[field].isoformat()
-            return Response(booking)
-
-        elif request.method == 'PUT':
+        if request.method == 'PUT':
             data = request.data
-            update_data = {}
+            new_status = data.get('status')  # Expected: 'completed' or 'cancelled'
+            
+            # 1. Fetch Vehicle and Party Details
+            vehicle = vehicles_collection.find_one({"_id": ObjectId(booking['vehicleId'])})
+            if not vehicle:
+                return Response({"error": "Vehicle not found"}, status=404)
 
-            # 1. Update Status and Manage Vehicle Availability
-            if 'status' in data:
-                new_status = data['status']
-                update_data['status'] = new_status
+            owner_id = str(vehicle['ownerId'])
+            renter_id = str(booking['renterId'])
+            vehicle_name = vehicle.get('name', 'Vehicle')
 
-                # Toggle vehicle availability based on status
-                is_available = True if new_status in ['completed', 'cancelled'] else False
+            # 2. Update Booking Status in MongoDB
+            bookings_collection.update_one(
+                {"_id": ObjectId(booking_id)}, 
+                {"$set": {"status": new_status}}
+            )
+
+            # 3. Process Return/Cancellation Logic
+            if new_status in ['completed', 'cancelled']:
+                # Free the vehicle for the next renter
                 vehicles_collection.update_one(
                     {"_id": ObjectId(booking['vehicleId'])},
-                    {"$set": {"isAvailable": is_available}}
+                    {"$set": {"isAvailable": True}}
                 )
 
-            # 2. Handle Refund Amount (sent from Flutter)
-            if 'refundAmount' in data:
-                update_data['refundAmount'] = data['refundAmount']
+                # Set customized messages
+                if new_status == 'completed':
+                    owner_title, owner_msg = "Vehicle Returned", f"Good news! {booking['renterName']} has returned your {vehicle_name}."
+                    renter_title, renter_msg = "Return Successful", f"You have successfully returned the {vehicle_name}. Thank you!"
+                else: # cancelled
+                    owner_title, owner_msg = "Booking Cancelled", f"The booking for your {vehicle_name} was cancelled."
+                    renter_title, renter_msg = "Trip Cancelled", f"Your booking for {vehicle_name} has been cancelled."
 
-            # 3. Save Updates to MongoDB
-            if update_data:
-                bookings_collection.update_one(
-                    {"_id": ObjectId(booking_id)},
-                    {"$set": update_data}
-                )
-
-            # 4. Notify Renter
-            try:
+                # 4. SEND DUAL NOTIFICATIONS
+                # To Owner
                 notifications_collection.insert_one({
-                    "userId": booking['renterId'],
-                    "title": "Trip Update",
-                    "message": f"Your trip for {booking.get('vehicleName')} is now {update_data.get('status')}.",
-                    "type": "info",
-                    "isRead": False,
-                    "createdAt": datetime.now()
+                    "userId": owner_id,
+                    "title": owner_title,
+                    "message": owner_msg,
+                    "type": "info", "isRead": False, "createdAt": datetime.now()
                 })
-            except:
-                pass
+                # To Renter
+                notifications_collection.insert_one({
+                    "userId": renter_id,
+                    "title": renter_title,
+                    "message": renter_msg,
+                    "type": "info", "isRead": False, "createdAt": datetime.now()
+                })
 
-            return Response({"message": "Update successful", "status": update_data.get('status')})
-
-        elif request.method == 'DELETE':
-            bookings_collection.delete_one({"_id": ObjectId(booking_id)})
-            return Response({"message": "Booking deleted successfully"})
+            return Response({"message": f"Booking {new_status} successfully"})
 
     except Exception as e:
-        print(f"Error in booking_detail: {str(e)}")
-        return Response({"error": "Internal Server Error"}, status=500)
-
+        return Response({"error": str(e)}, status=500)
+    
 @api_view(['GET'])
 def sync_users(request):
     try:    

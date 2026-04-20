@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:werent/models/user_model.dart';
 import 'package:werent/models/booking_model.dart';
 import 'package:werent/controllers/auth_controller.dart';
@@ -40,7 +41,14 @@ class _RenterDashboardPageState extends State<RenterDashboardPage> {
   void initState() {
     super.initState();
     _loadAnalytics();
-  }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) {
+      Provider.of<NotificationController>(context, listen: false)
+          .getNotifications(widget.user.id);
+    }
+  });
+}
 
   Future<void> _loadAnalytics() async {
     setState(() => _analyticsLoading = true);

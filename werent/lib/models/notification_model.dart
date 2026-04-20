@@ -21,7 +21,7 @@ class NotificationModel {
     return NotificationModel(
       id: (json['_id'] is Map
           ? (json['_id']['\$oid'] ?? '')
-          : (json['_id'] ?? '')), // 🐛 FIXED: MongoDB ObjectId parsing"
+          : (json['_id'] ?? '')), // MongoDB ObjectId parsing"
       userId: json['userId'] ?? '',
       title: json['title'] ?? '',
       message: json['message'] ?? '',
