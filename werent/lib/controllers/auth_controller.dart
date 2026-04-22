@@ -45,7 +45,7 @@ class AuthController extends ChangeNotifier {
             errorData['error'] ?? errorData['message'] ?? 'Signup failed';
         throw Exception(_getUserFriendlyErrorMessage(errorMessage, 'signup'));
       }
-    } on Exception catch (e) {
+    } catch (e) {
       // Re-throw with user-friendly message
       throw Exception(_getUserFriendlyErrorMessage(e.toString(), 'signup'));
     } finally {
@@ -87,7 +87,7 @@ class AuthController extends ChangeNotifier {
             errorData['error'] ?? errorData['message'] ?? 'Login failed';
         throw Exception(_getUserFriendlyErrorMessage(errorMessage, 'login'));
       }
-    } on Exception catch (e) {
+    } catch (e) {
       // Re-throw with user-friendly message
       throw Exception(_getUserFriendlyErrorMessage(e.toString(), 'login'));
     } finally {
@@ -204,3 +204,5 @@ class AuthController extends ChangeNotifier {
         : '/renter/dashboard';
   }
 }
+
+
